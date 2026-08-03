@@ -44,7 +44,6 @@ def get_time_since_last_check(data):
 
 def get_next_check_in():
     try:
-        # 1. Parse systemctl status directly (guaranteed match with Trigger: ... left)
         out_status = subprocess.check_output(
             ["systemctl", "status", "debian-update-check.timer"],
             stderr=subprocess.DEVNULL,
@@ -65,7 +64,6 @@ def get_next_check_in():
         pass
 
     try:
-        # 2. Fallback to systemctl list-timers --all
         out_timers = subprocess.check_output(
             ["systemctl", "list-timers", "--all"],
             stderr=subprocess.DEVNULL,
@@ -228,7 +226,6 @@ class DebianUpdateTray(QSystemTrayIcon):
         cmd = ["/usr/bin/debian-update-cli"]
         title = "Debian-Update"
 
-        # Check explicit $TERMINAL environment variable first
         env_term = os.environ.get("TERMINAL")
         if env_term and shutil.which(env_term):
             try:
@@ -237,7 +234,6 @@ class DebianUpdateTray(QSystemTrayIcon):
             except Exception:
                 pass
 
-        # Ordered candidate list with terminal-specific flags
         candidates = [
             ("konsole", ["konsole", "-p", f"tabtitle={title}", "--title", title, "-e"] + cmd),
             ("gnome-terminal", ["gnome-terminal", f"--title={title}", "--"] + cmd),
@@ -260,7 +256,6 @@ class DebianUpdateTray(QSystemTrayIcon):
                 except Exception:
                     continue
 
-        # Final fallback
         subprocess.Popen(["x-terminal-emulator", "-e"] + cmd)
 
 if __name__ == "__main__":

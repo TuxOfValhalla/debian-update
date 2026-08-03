@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# debian-update backend checker
+# check_backend.sh v0.2.0
 # Generates /var/cache/debian-update/status.json
 
 set -euo pipefail
@@ -10,10 +10,8 @@ STATUS_FILE="${CACHE_DIR}/status.json"
 
 mkdir -p "$CACHE_DIR"
 
-# Update APT package index quietly
 apt-get update -qq 2>/dev/null || true
 
-# Parse upgradable APT packages
 APT_UPDATES=()
 while IFS= read -r line; do
     [[ -z "$line" || "$line" =~ ^Listing ]] && continue
@@ -23,7 +21,6 @@ while IFS= read -r line; do
     fi
 done < <(apt list --upgradable 2>/dev/null || true)
 
-# Detect held-back packages
 APT_HELD_BACK=()
 while IFS= read -r line; do
     if [[ -n "$line" ]]; then
@@ -31,7 +28,6 @@ while IFS= read -r line; do
     fi
 done < <(apt-get -s upgrade 2>/dev/null | grep -A 100 "The following packages have been kept back:" | grep -E "^  " | tr -s ' ' '\n' | grep -v "^$" || true)
 
-# Parse Flatpak updates
 FLATPAK_UPDATES=()
 if command -v flatpak &>/dev/null; then
     while IFS= read -r line; do
@@ -41,13 +37,19 @@ if command -v flatpak &>/dev/null; then
     done < <(flatpak remote-ls --updates --columns=application 2>/dev/null || true)
 fi
 
-# Check reboot requirement
 REBOOT_REQUIRED=false
 if [[ -f /var/run/reboot-required ]]; then
     REBOOT_REQUIRED=true
 fi
 
-# Helper function to convert bash array to JSON array
+if [[ "$REBOOT_REQUIRED" = false ]] && lsmod | grep -q "^nvidia "; then
+    LOADED_NV=$(modinfo -F version nvidia 2>/dev/null || true)
+    INSTALLED_NV=$(dpkg-query -W -f='${Version}\n' nvidia-driver 2>/dev/null | cut -d'-' -f1 || dpkg-query -W -f='${Version}\n' nvidia-kernel-dkms 2>/dev/null | cut -d'-' -f1 || true)
+    if [[ -n "$LOADED_NV" && -n "$INSTALLED_NV" && "$LOADED_NV" != "$INSTALLED_NV" ]]; then
+        REBOOT_REQUIRED=true
+    fi
+fi
+
 to_json_array() {
     local arr=("$@")
     if [ ${#arr[@]} -eq 0 ]; then
@@ -67,8 +69,7 @@ APT_UPDATES_JSON=$(to_json_array "${APT_UPDATES[@]}")
 APT_HELD_JSON=$(to_json_array "${APT_HELD_BACK[@]}")
 FLATPAK_UPDATES_JSON=$(to_json_array "${FLATPAK_UPDATES[@]}")
 
-# Write status JSON atomically
-cat <<JSON > "${STATUS_FILE}.tmp"
+cat <<STATUS_EOF > "${STATUS_FILE}.tmp"
 {
   "last_check": "${TIMESTAMP}",
   "apt_updates": ${APT_UPDATES_JSON},
@@ -76,7 +77,7 @@ cat <<JSON > "${STATUS_FILE}.tmp"
   "flatpak_updates": ${FLATPAK_UPDATES_JSON},
   "reboot_required": ${REBOOT_REQUIRED}
 }
-JSON
+STATUS_EOF
 
 chmod 644 "${STATUS_FILE}.tmp"
 mv "${STATUS_FILE}.tmp" "${STATUS_FILE}"
