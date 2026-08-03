@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+# debian-update-cli
+# Interactive CLI tool for upgrading Debian (Testing/Sid) & Flatpak packages safely.
+
+set -euo pipefail
+
+# Set terminal window and tab title
+printf "\033]0;Debian-Update\007\033]30;Debian-Update\007"
+
+# Color definitions
+DEBIAN_RED='\033[38;2;215;10;83m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# Minimalist Header
+echo -e "${DEBIAN_RED}${BOLD}Debian-Update${NC}\n"
+
+# 1. Package Preview
+echo -e "${BOLD}APT Packages Pending Upgrade:${NC}"
+APT_OUT=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." || true)
+if [ -n "$APT_OUT" ]; then
+    echo -e "$APT_OUT"
+else
+    echo "No APT packages require upgrading."
+fi
+echo ""
+
+echo -e "${BOLD}Flatpak Applications Pending Upgrade:${NC}"
+FLATPAK_OUT=""
+if command -v flatpak &>/dev/null; then
+    FLATPAK_OUT=$(flatpak remote-ls --updates 2>/dev/null || true)
+    if [ -n "$FLATPAK_OUT" ]; then
+        echo -e "$FLATPAK_OUT"
+    else
+        echo "No Flatpak updates available."
+    fi
+else
+    echo "Flatpak is not installed."
+fi
+echo ""
+
+# Exit early if no updates are available
+if [ -z "${APT_OUT// }" ] && [ -z "${FLATPAK_OUT// }" ]; then
+    echo -e "${BOLD}System is up to date!${NC}\n"
+    read -p "Press [ENTER] to exit..."
+    exit 0
+fi
+
+# 2. Bug Check
+echo -e "${BOLD}Checking Debian Bug Tracking System (apt-listbugs):${NC}"
+if command -v apt-listbugs &>/dev/null; then
+    UPGRADABLE_PKGS=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | cut -d'/' -f1 | tr '\n' ' ' || true)
+    if [ -n "${UPGRADABLE_PKGS// }" ]; then
+        apt-listbugs list ${UPGRADABLE_PKGS} || true
+    else
+        echo "No APT packages pending bug check."
+    fi
+else
+    echo "Notice: 'apt-listbugs' is not installed."
+fi
+echo ""
+
+# 3. APT Upgrade
+echo -e "${BOLD}Upgrading APT packages:${NC}"
+sudo apt update && sudo apt upgrade
+
+# 4. Check for Held-Back Packages
+HELD_BACK=$(apt-get -s upgrade 2>/dev/null | grep -A 100 "The following packages have been kept back:" | grep -E "^  " || true)
+if [ -n "$HELD_BACK" ]; then
+    echo -e "\n${DEBIAN_RED}${BOLD}Held-back packages requiring manual intervention:${NC}"
+    echo -e "$HELD_BACK"
+    echo "Tip: Dependencies changed in Testing/Sid. Inspect with 'apt-cache policy <pkg>'."
+fi
+echo ""
+
+# 5. Flatpak Upgrade
+if command -v flatpak &>/dev/null; then
+    echo -e "${BOLD}Upgrading Flatpak packages:${NC}"
+    flatpak update
+    echo ""
+fi
+
+# 6. Cleanup
+echo -e "${BOLD}Cleaning up system:${NC}"
+echo "Removing orphan dependencies and clearing cache..."
+sudo apt autoremove --purge -y
+sudo apt autoclean -y
+
+if command -v flatpak &>/dev/null; then
+    flatpak uninstall --unused -y
+fi
+echo ""
+
+# 7. Service Inspection
+if command -v needrestart &>/dev/null; then
+    echo -e "${BOLD}Checking services to restart:${NC}"
+    sudo needrestart -r a || true
+    echo ""
+fi
+
+# Refresh background status cache
+sudo /usr/share/debian-update/lib/check_backend.sh || true
+
+# 8. Reboot Check
+if [ -f /var/run/reboot-required ]; then
+    echo -e "${DEBIAN_RED}${BOLD}SYSTEM REBOOT RECOMMENDED!${NC}"
+    echo "Core packages (e.g. kernel, systemd, libc) were updated."
+    if [ -f /var/run/reboot-required.pkgs ]; then
+        echo "Packages causing reboot requirement:"
+        cat /var/run/reboot-required.pkgs
+    fi
+else
+    echo -e "${BOLD}Upgrade complete! System is up-to-date.${NC}"
+fi
+
+echo ""
+read -p "Press [ENTER] to exit..."

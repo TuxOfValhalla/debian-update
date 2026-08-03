@@ -1,0 +1,8 @@
+[Unit]
+Description=Debian Update Background Checker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/debian-update/lib/check_backend.sh

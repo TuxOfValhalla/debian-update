@@ -1,0 +1,6 @@
+debian-update_*_all/
+*.deb
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store

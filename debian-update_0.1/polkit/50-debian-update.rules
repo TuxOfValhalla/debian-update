@@ -1,0 +1,8 @@
+/* Allow desktop users to trigger debian-update background check silently */
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") === "debian-update-check.service" &&
+        action.lookup("verb") === "start") {
+        return polkit.Result.YES;
+    }
+});
