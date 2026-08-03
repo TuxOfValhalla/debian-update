@@ -43,21 +43,24 @@ It periodically checks for **APT** and **Flatpak** updates in the background usi
 Build and install the Debian package directly from source:
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/agnar1984/debian-update.git
 cd debian-update
 ```
 
 2. Build the package:
+
 ```bash
 chmod +x build_deb.sh
 ./build_deb.sh
 ```
 
 3. Install via APT:
+
 ```bash
 sudo apt install ./debian-update_0.1.0-1_all.deb
-
+```
 
 ---
 
