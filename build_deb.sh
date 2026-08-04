@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
 
-# build_deb.sh v0.2.0
-# Builds debian-update_0.2.0-1_all.deb package from debian-update_0.2 directory
-
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION_DIR="${DEV_DIR}/debian-update_0.2"
-PKG_NAME="debian-update_0.2.0-1_all"
-BUILD_ROOT="${DEV_DIR}/${PKG_NAME}"
+VERSION="0.2.5-1"
+PKG_NAME="debian-update_${VERSION}_all"
+BUILD_ROOT="/tmp/${PKG_NAME}"
+OUTPUT_DEB="${DEV_DIR}/${PKG_NAME}.deb"
+GENERIC_DEB="${DEV_DIR}/debian-update.deb"
 
-if [ -d "${VERSION_DIR}" ]; then
-    SRC_DIR="${VERSION_DIR}"
-else
-    SRC_DIR="${DEV_DIR}"
-fi
+SRC_DIR="${DEV_DIR}"
 
-echo "==> Preparing Debian package directory structure for v0.2.0..."
-echo "==> Source directory: ${SRC_DIR}"
+echo "==> Preparing Debian package directory structure in /tmp for v${VERSION}..."
 rm -rf "${BUILD_ROOT}"
 mkdir -p "${BUILD_ROOT}/DEBIAN"
 mkdir -p "${BUILD_ROOT}/usr/bin"
@@ -42,7 +36,7 @@ fi
 echo "==> Writing DEBIAN/control..."
 cat << 'CONTROL_EOF' > "${BUILD_ROOT}/DEBIAN/control"
 Package: debian-update
-Version: 0.2.0-1
+Version: 0.2.5-1
 Section: admin
 Priority: optional
 Architecture: all
@@ -97,7 +91,7 @@ case "$1" in
         ;;
 esac
 exit 0
-PRERM_EOF
+POSTINST_EOF
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
 echo "==> Setting standard permissions..."
@@ -110,6 +104,11 @@ chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
 echo "==> Building .deb package..."
-dpkg-deb --build "${BUILD_ROOT}"
+dpkg-deb --build "${BUILD_ROOT}" "${OUTPUT_DEB}"
 
-echo -e "\n\033[1;32mSUCCESS: Package built at ${DEV_DIR}/${PKG_NAME}.deb\033[0m"
+cp "${OUTPUT_DEB}" "${GENERIC_DEB}"
+rm -rf "${BUILD_ROOT}"
+
+echo -e "\n\033[1;32mEXCELLENT: Package built successfully\033[0m"
+echo -e " • Versioned: ${OUTPUT_DEB}"
+echo -e " • Generic:   ${GENERIC_DEB}"

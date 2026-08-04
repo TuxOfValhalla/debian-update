@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 
-# debian-update-cli v0.2.0
+# debian-update-cli v0.2.5
 # Interactive CLI tool for upgrading Debian (Testing/Sid) & Flatpak packages safely.
 
 set -euo pipefail
 
-# Set terminal window and tab title (OSC escape sequences for Xterm/Konsole)
 printf "\033]0;Debian-Update\007\033]30;Debian-Update\007"
 
-# ANSI Color Palette
 DEBIAN_RED='\033[38;2;215;10;83m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,12 +15,10 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-echo -e "${BOLD}Debian-Update v0.2.0${NC}\n"
+echo -e "${BOLD}Debian-Update v0.2.5${NC}\n"
 
-# Capture list of pending upgradable packages prior to upgrade for reboot analysis
 UPGRADABLE_PKGS_BEFORE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | cut -d'/' -f1 || true)
 
-# 1. Package Preview (APT & Flatpak)
 echo -e "${BLUE}${BOLD}--- [ APT Packages Pending Upgrade ] ---${NC}"
 APT_OUT=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." || true)
 if [ -n "$APT_OUT" ]; then
@@ -46,14 +42,12 @@ else
 fi
 echo ""
 
-# Exit early if no updates are available
 if [ -z "${APT_OUT// }" ] && [ -z "${FLATPAK_OUT// }" ]; then
     echo -e "${DEBIAN_RED}${BOLD}System is up to date!${NC}\n"
     read -p "Press [ENTER] to exit..."
     exit 0
 fi
 
-# 2. Check Debian Bug Tracking System (apt-listbugs)
 echo -e "${YELLOW}${BOLD}--- [ Checking Debian Bug Tracking System (apt-listbugs) ] ---${NC}"
 if command -v apt-listbugs &>/dev/null; then
     UPGRADABLE_PKGS=$(echo "$UPGRADABLE_PKGS_BEFORE" | tr '\n' ' ')
@@ -72,7 +66,7 @@ sudo apt upgrade
 
 echo ""
 echo -e "${YELLOW}${BOLD}--- [ Checking for Held-Back Packages ] ---${NC}"
-HELD_BACK=$(apt-get -s upgrade 2>/dev/null | grep -A 100 "The following packages have been kept back:" | grep -E "^  " || true)
+HELD_BACK=$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | awk '/The following packages have been kept back:/{flag=1; next} /^[A-Za-z0-9]/{flag=0} flag {print}' | tr -s ' ' '\n' | grep -v "^$" || true)
 if [ -n "$HELD_BACK" ]; then
     echo -e "${DEBIAN_RED}${BOLD}[WARNING] The following packages were held back and require MANUAL INTERVENTION:${NC}"
     echo -e "$HELD_BACK"
@@ -107,20 +101,16 @@ else
     echo "Tip: Install 'needrestart' to automatically restart services updated in background."
 fi
 
-# Refresh background status JSON cache after upgrade
 echo ""
 echo "Refreshing background status cache..."
 sudo /usr/share/debian-update/lib/check_backend.sh || true
 
-# 3. Reboot Requirement Analysis (NVIDIA, KDE Plasma, Glibc, Kernel, Systemd)
 REBOOT_REASONS=()
 
-# Check standard system reboot flag
 if [ -f /var/run/reboot-required ]; then
     REBOOT_REASONS+=("Core system components updated (/var/run/reboot-required).")
 fi
 
-# Check NVIDIA driver kernel module version mismatch
 if lsmod | grep -q "^nvidia "; then
     LOADED_NV=$(modinfo -F version nvidia 2>/dev/null || true)
     INSTALLED_NV=$(dpkg-query -W -f='${Version}\n' nvidia-driver 2>/dev/null | cut -d'-' -f1 || dpkg-query -W -f='${Version}\n' nvidia-kernel-dkms 2>/dev/null | cut -d'-' -f1 || true)
@@ -132,12 +122,10 @@ if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(nvidia-driver|nvidia-kernel-open
     REBOOT_REASONS+=("NVIDIA graphics driver suite was updated.")
 fi
 
-# Check KDE Plasma version jump / desktop components update
 if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(plasma-desktop|plasma-workspace|kwin-wayland|kwin-x11)$"; then
     REBOOT_REASONS+=("KDE Plasma desktop environment components were updated.")
 fi
 
-# Check Glibc / Kernel / Systemd updates
 if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(libc6|glibc|linux-image-[0-9].*|systemd)$"; then
     REBOOT_REASONS+=("Critical system libraries/kernel (glibc/kernel/systemd) were updated.")
 fi

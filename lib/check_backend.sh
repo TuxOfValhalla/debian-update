@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# check_backend.sh v0.2.0
+# check_backend.sh v0.2.5
 # Generates /var/cache/debian-update/status.json
 
 set -euo pipefail
@@ -22,11 +22,17 @@ while IFS= read -r line; do
 done < <(apt list --upgradable 2>/dev/null || true)
 
 APT_HELD_BACK=()
-while IFS= read -r line; do
-    if [[ -n "$line" ]]; then
-        APT_HELD_BACK+=("$line")
+while IFS= read -r pkg; do
+    if [[ -n "$pkg" ]]; then
+        APT_HELD_BACK+=("$pkg")
     fi
-done < <(apt-get -s upgrade 2>/dev/null | grep -A 100 "The following packages have been kept back:" | grep -E "^  " | tr -s ' ' '\n' | grep -v "^$" || true)
+done < <(apt-get -s upgrade --with-new-pkgs 2>/dev/null | awk '/The following packages have been kept back:/{flag=1; next} /^[A-Za-z0-9]/{flag=0} flag {print}' | tr -s ' ' '\n' | grep -v "^$" || true)
+
+while IFS= read -r pkg; do
+    if [[ -n "$pkg" ]] && [[ ! " ${APT_HELD_BACK[*]-} " =~ " ${pkg} " ]]; then
+        APT_HELD_BACK+=("$pkg")
+    fi
+done < <(apt-mark showhold 2>/dev/null || true)
 
 FLATPAK_UPDATES=()
 if command -v flatpak &>/dev/null; then
@@ -69,7 +75,7 @@ APT_UPDATES_JSON=$(to_json_array "${APT_UPDATES[@]}")
 APT_HELD_JSON=$(to_json_array "${APT_HELD_BACK[@]}")
 FLATPAK_UPDATES_JSON=$(to_json_array "${FLATPAK_UPDATES[@]}")
 
-cat <<STATUS_EOF > "${STATUS_FILE}.tmp"
+cat <<EOF > "${STATUS_FILE}.tmp"
 {
   "last_check": "${TIMESTAMP}",
   "apt_updates": ${APT_UPDATES_JSON},
@@ -77,7 +83,3 @@ cat <<STATUS_EOF > "${STATUS_FILE}.tmp"
   "flatpak_updates": ${FLATPAK_UPDATES_JSON},
   "reboot_required": ${REBOOT_REQUIRED}
 }
-STATUS_EOF
-
-chmod 644 "${STATUS_FILE}.tmp"
-mv "${STATUS_FILE}.tmp" "${STATUS_FILE}"

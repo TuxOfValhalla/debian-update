@@ -1,6 +1,3 @@
-debian-update_*_all/
 *.deb
+status.json
 *.tmp
-__pycache__/
-*.pyc
-.DS_Store
