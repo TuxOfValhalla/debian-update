@@ -91,7 +91,7 @@ case "$1" in
         ;;
 esac
 exit 0
-POSTINST_EOF
+PRERM_EOF
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
 echo "==> Setting standard permissions..."
