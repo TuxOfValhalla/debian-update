@@ -59,7 +59,7 @@ chmod +x build_deb.sh
 3. Install via APT:
 
 ```bash
-sudo apt install ./debian-update_0.1.0-1_all.deb
+sudo apt install ./debian-update.deb
 ```
 
 ---
