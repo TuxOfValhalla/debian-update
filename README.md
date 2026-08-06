@@ -9,15 +9,15 @@ It periodically checks for APT and Flatpak updates in the background using a sys
 
 <p align="center">
   <b>System Tray Applet</b><br>
-  <img src="assets/tray1.png" width="30%" alt="Tray 1" />
-  <img src="assets/tray2.png" width="30%" alt="Tray 2" />
-  <img src="assets/tray3.png" width="30%" alt="Tray 3" />
+  <img src="./assets/tray_preview1.png" width="30%" alt="Tray 1" />
+  <img src="./assets/tray_preview2.png" width="30%" alt="Tray 2" />
+  <img src="./assets/tray_preview3.png" width="30%" alt="Tray 3" />
 </p>
 
 <p align="center">
   <b>Interactive CLI Suite</b><br>
-  <img src="assets/cli1.png" width="45%" alt="CLI 1" />
-  <img src="assets/cli2.png" width="45%" alt="CLI 2" />
+  <img src="./assets/terminal_preview1.png" width="45%" alt="CLI 1" />
+  <img src="./assets/terminal_preview2.png" width="45%" alt="CLI 2" />
 </p>
 
 ## ⚡ Features
