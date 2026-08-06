@@ -5,13 +5,20 @@ It periodically checks for APT and Flatpak updates in the background using a sys
 
 > **Note & Disclaimer:** This package was built with the help of AI, but has been quality controlled, tested, and used by myself to make sure it works. This application is currently in an alpha stage and will continue to receive updates in the future.
 
-## 📸 Screenshots
+<h3>📸 Screenshots</h3>
 
-### System Tray Applet
-Preview 1 | Preview 2 | Preview 3
+<p align="center">
+  <b>System Tray Applet</b><br>
+  <img src="assets/tray1.png" width="30%" alt="Tray 1" />
+  <img src="assets/tray2.png" width="30%" alt="Tray 2" />
+  <img src="assets/tray3.png" width="30%" alt="Tray 3" />
+</p>
 
-### Interactive CLI Suite
-Package Preview & Bug Check | Interactive Upgrade & Service Inspection
+<p align="center">
+  <b>Interactive CLI Suite</b><br>
+  <img src="assets/cli1.png" width="45%" alt="CLI 1" />
+  <img src="assets/cli2.png" width="45%" alt="CLI 2" />
+</p>
 
 ## ⚡ Features
 
