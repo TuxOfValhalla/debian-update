@@ -45,7 +45,7 @@ Build and install the Debian package directly from source:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/agnar1984/debian-update.git
+git clone https://github.com/TuxOfValhalla/debian-update.git
 cd debian-update
 ```
 
