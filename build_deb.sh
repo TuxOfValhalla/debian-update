@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.3.1-1"
+VERSION="0.4.0-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -26,6 +26,7 @@ mkdir -p "${DEV_DIR}/releases"
 
 echo "==> Kopierer applikasjonsfiler, ikoner og lisens..."
 cp "${SRC_DIR}/bin/debian-update-cli" "${BUILD_ROOT}/usr/bin/"
+cp "${SRC_DIR}/bin/debian-update-debget" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/lib/debian-update-tray" "${BUILD_ROOT}/usr/lib/debian-update/"
 cp "${SRC_DIR}/lib/check_backend.sh" "${BUILD_ROOT}/usr/share/debian-update/lib/"
 cp "${SRC_DIR}/desktop/debian-update-tray.desktop" "${BUILD_ROOT}/usr/share/applications/"
@@ -53,11 +54,13 @@ Priority: optional
 Architecture: all
 Maintainer: tux <tux@localhost>
 Depends: python3, python3-pyqt5, python3-pyqt5.qtsvg, systemd, needrestart
-Recommends: flatpak, apt-listbugs, mokutil, sbsigntool
+Recommends: flatpak, deb-get, apt-listbugs, mokutil, sbsigntool
+Suggests: am, appimageupdatetool
 Description: System tray indicator and CLI upgrade suite for Debian Testing/Sid
  A lightweight system tray applet and CLI suite for Debian.
- Periodically checks APT & Flatpak via systemd, verifies Secure Boot
- and kernel/NVIDIA signatures, safely upgrades packages, and cleans orphan dependencies.
+ Periodically checks APT, 3rd-party .deb (deb-get), Flatpak & AppImages via systemd,
+ verifies Secure Boot and kernel/NVIDIA signatures, safely upgrades packages,
+ and cleans orphan dependencies.
 CONTROL_EOF
 
 echo "==> Skriver DEBIAN/postinst..."
@@ -73,7 +76,7 @@ case "$1" in
         if command -v systemctl >/dev/null 2>&1; then
             systemctl daemon-reload || true
             systemctl enable --now debian-update-check.timer || true
-            systemctl start debian-update-check.service || true
+            systemctl start --no-block debian-update-check.service || true
         fi
 
         if command -v gtk-update-icon-cache >/dev/null 2>&1; then
@@ -111,6 +114,7 @@ echo "==> Setter standard tillatelser..."
 find "${BUILD_ROOT}" -type d -exec chmod 755 {} \;
 find "${BUILD_ROOT}" -type f -exec chmod 644 {} \;
 chmod 755 "${BUILD_ROOT}/usr/bin/debian-update-cli"
+chmod 755 "${BUILD_ROOT}/usr/bin/debian-update-debget"
 chmod 755 "${BUILD_ROOT}/usr/lib/debian-update/debian-update-tray"
 chmod 755 "${BUILD_ROOT}/usr/share/debian-update/lib/check_backend.sh"
 chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"

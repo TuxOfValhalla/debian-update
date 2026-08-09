@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-
-# debian-update-cli v0.3.0
+# debian-update-cli v0.4.0
 set -euo pipefail
+
+export NEEDRESTART_MODE=a
 
 BOLD="\033[1m"
 GREEN="\033[1;32m"
@@ -9,7 +10,7 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
-echo -e "${CYAN}${BOLD}Debian-Update v0.3.0${RESET}\n"
+echo -e "${CYAN}${BOLD}Debian-Update v0.4.0${RESET}\n"
 
 STATUS_FILE="/var/cache/debian-update/status.json"
 
@@ -21,11 +22,15 @@ try:
     with open("'"$STATUS_FILE"'") as f:
         d = json.load(f)
         apt = d.get("apt_updates", [])
-        held = d.get("apt_held_back", [])
+        debget = d.get("debget_updates", [])
         fp = d.get("flatpak_updates", [])
-        print(f" • APT Updates:     {len(apt)}")
-        print(f" • Flatpak Updates: {len(fp)}")
-        print(f" • Held Back:       {len(held)}")
+        appimg = d.get("appimage_updates", [])
+        held = d.get("apt_held_back", [])
+        print(f" • APT Updates:         {len(apt)}")
+        print(f" • Third-Party .deb:    {len(debget)}")
+        print(f" • Flatpak Applications: {len(fp)}")
+        print(f" • AppImages:           {len(appimg)}")
+        print(f" • Held Back:           {len(held)}")
 except Exception:
     pass
 '
@@ -33,32 +38,62 @@ except Exception:
 fi
 
 # Step 1: APT Upgrade
-echo -e "${BOLD}=== Step 1/3: Upgrading APT Packages ===${RESET}"
+echo -e "${BOLD}=== Step 1/4: Upgrading APT Packages ===${RESET}"
 if command -v apt-listbugs >/dev/null 2>&1; then
     echo -e "${YELLOW}Checking Debian Bug Tracking System (apt-listbugs)...${RESET}"
 fi
-sudo apt upgrade
+sudo NEEDRESTART_MODE=a apt upgrade
 
-# Step 2: Flatpak Upgrade
-echo -e "\n${BOLD}=== Step 2/3: Upgrading Flatpak Packages ===${RESET}"
+# Step 2: Third-Party .deb Upgrade (deb-get)
+echo -e "\n${BOLD}=== Step 2/4: Upgrading Third-Party .deb Packages (deb-get) ===${RESET}"
+if command -v deb-get >/dev/null 2>&1; then
+    echo -e "${GREEN}Checking & upgrading 3rd-party .deb packages...${RESET}"
+    sudo deb-get update >/dev/null 2>&1 || true
+    timeout 60s sudo NEEDRESTART_MODE=a deb-get upgrade || echo -e "${YELLOW}deb-get upgrade timed out (60s guard) or completed with warnings. Skipping...${RESET}"
+else
+    echo "deb-get is not installed. Skipping."
+fi
+
+# Step 3: Flatpak Upgrade
+echo -e "\n${BOLD}=== Step 3/4: Upgrading Flatpak Packages ===${RESET}"
 if command -v flatpak >/dev/null 2>&1; then
     flatpak update
 else
     echo "Flatpak is not installed. Skipping."
 fi
 
-# Step 3: Interactive System Cleanup
-echo -e "\n${BOLD}=== Step 3/3: System Cleanup & Service Inspection ===${RESET}"
-read -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " -n 1 -r REPLY
-echo
+# Step 4: AppImage Upgrade
+echo -e "\n${BOLD}=== Step 4/4: Upgrading AppImages ===${RESET}"
+if command -v am >/dev/null 2>&1; then
+    echo -e "${GREEN}Updating AppImages via AM (AppImage Manager)...${RESET}"
+    timeout 60s am update || echo -e "${YELLOW}AM update timed out (60s guard) or finished with warnings.${RESET}"
+elif command -v appimageupdatetool >/dev/null 2>&1; then
+    echo -e "${GREEN}Updating AppImages via appimageupdatetool...${RESET}"
+    APP_DIRS=("$HOME/Applications" "$HOME/.local/bin" "/opt/appimages")
+    for app_dir in "${APP_DIRS[@]}"; do
+        if [ -d "$app_dir" ]; then
+            for img in "$app_dir"/*.AppImage "$app_dir"/*.appimage; do
+                [ -f "$img" ] || continue
+                echo "Checking $img..."
+                timeout 15s appimageupdatetool -overwrite "$img" || true
+            done
+        fi
+    done
+else
+    echo "No AppImage management tools (AM / appimageupdatetool) detected. Skipping."
+fi
+
+# Step 5: Interactive System Cleanup
+echo -e "\n${BOLD}=== Step 5/5: System Cleanup & Service Inspection ===${RESET}"
+read -r -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " REPLY
 if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-    echo -e "${GREEN}Schwing! Running package cleanup...${RESET}"
-    sudo apt autoremove
+    echo -e "${GREEN}Running package cleanup...${RESET}"
+    sudo NEEDRESTART_MODE=a apt autoremove
     if command -v flatpak >/dev/null 2>&1; then
         flatpak uninstall --unused || true
     fi
 else
-    echo -e "${YELLOW}Skipping cleanup step. Party on!${RESET}"
+    echo -e "${YELLOW}Skipping cleanup step.${RESET}"
 fi
 
 # Service Inspection via needrestart
@@ -67,9 +102,12 @@ if command -v needrestart >/dev/null 2>&1; then
     sudo needrestart -b || true
 fi
 
-# Trigger background status refresh
-echo -e "\n${CYAN}Refreshing background status cache...${RESET}"
-sudo systemctl start debian-update-check.service || true
+# Trigger background status refresh asynchronously (--no-block)
+echo -e "\n${CYAN}Refreshing status cache...${RESET}"
+sudo systemctl start --no-block debian-update-check.service || true
 
-echo -e "\n${GREEN}${BOLD}BODACIOUS! Upgrade complete! System is up-to-date.${RESET}\n"
-read -p "Press [ENTER] to exit..."
+echo -e "\n${GREEN}${BOLD}Upgrade complete. System is up to date.${RESET}\n"
+
+while read -r -t 0.1; do :; done
+
+read -r -p "Press [ENTER] to exit..."

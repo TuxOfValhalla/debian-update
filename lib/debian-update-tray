@@ -138,20 +138,19 @@ class DebianUpdateTray(QSystemTrayIcon):
             self.setToolTip("Debian Update: Status unknown")
         else:
             apt_list = data.get("apt_updates", [])
-            held_list = data.get("apt_held_back", [])
+            debget_list = data.get("debget_updates", [])
             flatpak_list = data.get("flatpak_updates", [])
+            appimage_list = data.get("appimage_updates", [])
+            held_list = data.get("apt_held_back", [])
             reboot_req = data.get("reboot_required", False)
             sb_info = data.get("secure_boot", {})
             sb_warnings = sb_info.get("warnings", [])
 
-            total_updates = len(apt_list) + len(flatpak_list)
+            total_updates = len(apt_list) + len(debget_list) + len(flatpak_list) + len(appimage_list)
 
-            # Tilstandsbasert ikonoppsett
             if total_updates > 0:
-                # Tilgjengelige oppdateringer -> Rød pil ned
                 self.setIcon(QIcon(ICON_PENDING))
             else:
-                # Alt oppdatert -> Liten grønn hake
                 self.setIcon(QIcon(ICON_OK))
 
             if total_updates > 0 and total_updates != self.last_notified_count:
@@ -167,7 +166,9 @@ class DebianUpdateTray(QSystemTrayIcon):
 
             tooltip = f"Debian Updates Available: {total_updates}\n"
             tooltip += f"• APT: {len(apt_list)}\n"
-            tooltip += f"• Flatpak: {len(flatpak_list)}"
+            tooltip += f"• Third-Party .deb: {len(debget_list)}\n"
+            tooltip += f"• Flatpak: {len(flatpak_list)}\n"
+            tooltip += f"• AppImages: {len(appimage_list)}"
             if len(held_list) > 0:
                 tooltip += f"\n• Held Back: {len(held_list)}"
             if reboot_req:
@@ -185,10 +186,24 @@ class DebianUpdateTray(QSystemTrayIcon):
                     action.setEnabled(False)
                     pending_menu.addAction(action)
 
+            if len(debget_list) > 0:
+                pending_menu.addSection(f"Third-Party .deb ({len(debget_list)})")
+                for pkg in debget_list:
+                    action = QAction(f"  {pkg}", self)
+                    action.setEnabled(False)
+                    pending_menu.addAction(action)
+
             if len(flatpak_list) > 0:
                 pending_menu.addSection(f"Flatpak Applications ({len(flatpak_list)})")
                 for app_id in flatpak_list:
                     action = QAction(f"  {app_id}", self)
+                    action.setEnabled(False)
+                    pending_menu.addAction(action)
+
+            if len(appimage_list) > 0:
+                pending_menu.addSection(f"AppImages ({len(appimage_list)})")
+                for img in appimage_list:
+                    action = QAction(f"  {img}", self)
                     action.setEnabled(False)
                     pending_menu.addAction(action)
 
@@ -235,6 +250,10 @@ class DebianUpdateTray(QSystemTrayIcon):
         upgrade_action.triggered.connect(self.launch_upgrade)
         self.menu.addAction(upgrade_action)
 
+        debget_action = QAction("Get .deb files", self)
+        debget_action.triggered.connect(self.launch_debget)
+        self.menu.addAction(debget_action)
+
         self.menu.addSeparator()
 
         quit_action = QAction("Quit", self)
@@ -242,15 +261,24 @@ class DebianUpdateTray(QSystemTrayIcon):
         self.menu.addAction(quit_action)
 
     def trigger_check(self):
-        # Vis 'checking' ikonet (to piler: grønn høyre, rød venstre) umiddelbart
         self.setIcon(QIcon(ICON_CHECKING))
         self.setToolTip("Debian Update: Checking for updates...")
-        subprocess.Popen(["systemctl", "start", "debian-update-check.service"])
+        try:
+            res = subprocess.run(["systemctl", "start", "debian-update-check.service"], capture_output=True, text=True)
+            if res.returncode != 0:
+                subprocess.Popen(["pkexec", "systemctl", "start", "debian-update-check.service"])
+        except Exception:
+            pass
+
+    def launch_debget(self):
+        cmd = ["/usr/bin/debian-update-debget"]
+        self.launch_in_terminal(cmd, "Debian-Update: Third-Party .deb Manager")
 
     def launch_upgrade(self):
         cmd = ["/usr/bin/debian-update-cli"]
-        title = "Debian-Update"
+        self.launch_in_terminal(cmd, "Debian-Update")
 
+    def launch_in_terminal(self, cmd, title):
         env_term = os.environ.get("TERMINAL")
         if env_term and shutil.which(env_term):
             try:
