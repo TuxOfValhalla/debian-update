@@ -1,164 +1,75 @@
 #!/usr/bin/env bash
 
-# debian-update-cli v0.2.5
-# Interactive CLI tool for upgrading Debian (Testing/Sid) & Flatpak packages safely.
-
+# debian-update-cli v0.3.0
 set -euo pipefail
 
-printf "\033]0;Debian-Update\007\033]30;Debian-Update\007"
+BOLD="\033[1m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+CYAN="\033[1;36m"
+RESET="\033[0m"
 
-DEBIAN_RED='\033[38;2;215;10;83m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
+echo -e "${CYAN}${BOLD}Debian-Update v0.3.0${RESET}\n"
 
-echo -e "${BOLD}Debian-Update v0.2.5${NC}\n"
+STATUS_FILE="/var/cache/debian-update/status.json"
 
-UPGRADABLE_PKGS_BEFORE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | cut -d'/' -f1 || true)
-
-echo -e "${BLUE}${BOLD}--- [ APT Packages Pending Upgrade ] ---${NC}"
-APT_OUT=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." || true)
-if [ -n "$APT_OUT" ]; then
-    echo -e "$APT_OUT"
-else
-    echo "No APT packages require upgrading."
+if [ -f "$STATUS_FILE" ]; then
+    echo -e "${BOLD}--- [ Pending Updates Summary ] ---${RESET}"
+    python3 -c '
+import json
+try:
+    with open("'"$STATUS_FILE"'") as f:
+        d = json.load(f)
+        apt = d.get("apt_updates", [])
+        held = d.get("apt_held_back", [])
+        fp = d.get("flatpak_updates", [])
+        print(f" • APT Updates:     {len(apt)}")
+        print(f" • Flatpak Updates: {len(fp)}")
+        print(f" • Held Back:       {len(held)}")
+except Exception:
+    pass
+'
+    echo ""
 fi
 
-echo ""
-echo -e "${BLUE}${BOLD}--- [ Flatpak Applications Pending Upgrade ] ---${NC}"
-FLATPAK_OUT=""
-if command -v flatpak &>/dev/null; then
-    FLATPAK_OUT=$(flatpak remote-ls --updates 2>/dev/null || true)
-    if [ -n "$FLATPAK_OUT" ]; then
-        echo -e "$FLATPAK_OUT"
-    else
-        echo "No Flatpak updates available."
-    fi
-else
-    echo "Flatpak is not installed."
+# Step 1: APT Upgrade
+echo -e "${BOLD}=== Step 1/3: Upgrading APT Packages ===${RESET}"
+if command -v apt-listbugs >/dev/null 2>&1; then
+    echo -e "${YELLOW}Checking Debian Bug Tracking System (apt-listbugs)...${RESET}"
 fi
-echo ""
-
-if [ -z "${APT_OUT// }" ] && [ -z "${FLATPAK_OUT// }" ]; then
-    echo -e "${DEBIAN_RED}${BOLD}System is up to date!${NC}\n"
-    read -p "Press [ENTER] to exit..."
-    exit 0
-fi
-
-echo -e "${YELLOW}${BOLD}--- [ Checking Debian Bug Tracking System (apt-listbugs) ] ---${NC}"
-if command -v apt-listbugs &>/dev/null; then
-    UPGRADABLE_PKGS=$(echo "$UPGRADABLE_PKGS_BEFORE" | tr '\n' ' ')
-    if [ -n "${UPGRADABLE_PKGS// }" ]; then
-        sudo apt-listbugs list ${UPGRADABLE_PKGS} || true
-    else
-        echo "No APT packages pending bug check."
-    fi
-else
-    echo -e "${YELLOW}Notice: 'apt-listbugs' is not installed. Consider installing it for extra Sid/Testing safety.${NC}"
-fi
-
-echo ""
-echo -e "${GREEN}${BOLD}=== Step 1/3: Upgrading APT Packages ===${NC}"
 sudo apt upgrade
 
-echo ""
-echo -e "${YELLOW}${BOLD}--- [ Checking for Held-Back Packages ] ---${NC}"
-HELD_BACK=$(apt-get -s upgrade --with-new-pkgs 2>/dev/null | awk '/The following packages have been kept back:/{flag=1; next} /^[A-Za-z0-9]/{flag=0} flag {print}' | tr -s ' ' '\n' | grep -v "^$" || true)
-if [ -n "$HELD_BACK" ]; then
-    echo -e "${DEBIAN_RED}${BOLD}[WARNING] The following packages were held back and require MANUAL INTERVENTION:${NC}"
-    echo -e "$HELD_BACK"
-    echo -e "${YELLOW}Tip: Dependencies for these packages changed in Testing/Sid. Inspect with 'apt-cache policy <pkg>' before upgrading.${NC}"
-else
-    echo -e "${GREEN}No packages were held back.${NC}"
-fi
-
-echo ""
-echo -e "${GREEN}${BOLD}=== Step 2/3: Upgrading Flatpak Packages ===${NC}"
-if command -v flatpak &>/dev/null; then
+# Step 2: Flatpak Upgrade
+echo -e "\n${BOLD}=== Step 2/3: Upgrading Flatpak Packages ===${RESET}"
+if command -v flatpak >/dev/null 2>&1; then
     flatpak update
 else
-    echo "Flatpak is not installed."
+    echo "Flatpak is not installed. Skipping."
 fi
 
-echo ""
-echo -e "${GREEN}${BOLD}=== Step 3/3: System Cleanup & Service Inspection ===${NC}"
-echo "Removing orphan dependencies and clearing cache..."
-sudo apt autoremove --purge -y
-sudo apt autoclean -y
-
-if command -v flatpak &>/dev/null; then
-    flatpak uninstall --unused -y
-fi
-
-echo ""
-echo -e "${BLUE}${BOLD}--- [ Service Restart Inspection (needrestart) ] ---${NC}"
-if command -v needrestart &>/dev/null; then
-    sudo needrestart -r a || true
-else
-    echo "Tip: Install 'needrestart' to automatically restart services updated in background."
-fi
-
-echo ""
-echo "Refreshing background status cache..."
-sudo /usr/share/debian-update/lib/check_backend.sh || true
-
-REBOOT_REASONS=()
-
-if [ -f /var/run/reboot-required ]; then
-    REBOOT_REASONS+=("Core system components updated (/var/run/reboot-required).")
-fi
-
-if lsmod | grep -q "^nvidia "; then
-    LOADED_NV=$(modinfo -F version nvidia 2>/dev/null || true)
-    INSTALLED_NV=$(dpkg-query -W -f='${Version}\n' nvidia-driver 2>/dev/null | cut -d'-' -f1 || dpkg-query -W -f='${Version}\n' nvidia-kernel-dkms 2>/dev/null | cut -d'-' -f1 || true)
-    if [ -n "$LOADED_NV" ] && [ -n "$INSTALLED_NV" ] && [ "$LOADED_NV" != "$INSTALLED_NV" ]; then
-        REBOOT_REASONS+=("NVIDIA GPU driver mismatch: Loaded module (${LOADED_NV}) vs Installed package (${INSTALLED_NV}).")
+# Step 3: Interactive System Cleanup
+echo -e "\n${BOLD}=== Step 3/3: System Cleanup & Service Inspection ===${RESET}"
+read -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " -n 1 -r REPLY
+echo
+if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+    echo -e "${GREEN}Schwing! Running package cleanup...${RESET}"
+    sudo apt autoremove
+    if command -v flatpak >/dev/null 2>&1; then
+        flatpak uninstall --unused || true
     fi
-fi
-if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(nvidia-driver|nvidia-kernel-open-dkms|nvidia-kernel-dkms|xserver-xorg-video-nvidia)$"; then
-    REBOOT_REASONS+=("NVIDIA graphics driver suite was updated.")
-fi
-
-if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(plasma-desktop|plasma-workspace|kwin-wayland|kwin-x11)$"; then
-    REBOOT_REASONS+=("KDE Plasma desktop environment components were updated.")
-fi
-
-if echo "$UPGRADABLE_PKGS_BEFORE" | grep -qE "^(libc6|glibc|linux-image-[0-9].*|systemd)$"; then
-    REBOOT_REASONS+=("Critical system libraries/kernel (glibc/kernel/systemd) were updated.")
-fi
-
-echo ""
-if [ ${#REBOOT_REASONS[@]} -gt 0 ]; then
-    echo -e "${DEBIAN_RED}${BOLD}====================================================${NC}"
-    echo -e "${DEBIAN_RED}${BOLD}           SYSTEM REBOOT RECOMMENDED!              ${NC}"
-    echo -e "${DEBIAN_RED}${BOLD}====================================================${NC}"
-    echo -e "${DEBIAN_RED}The following critical updates require a system reboot:${NC}"
-    for reason in "${REBOOT_REASONS[@]}"; do
-        echo -e "${DEBIAN_RED} • ${reason}${NC}"
-    done
-    echo ""
-    read -p "$(echo -e "${DEBIAN_RED}${BOLD}Would you like to reboot the system now? [y/N]: ${NC}")" REBOOT_CHOICE
-    case "$REBOOT_CHOICE" in
-        [Yy]*)
-            echo ""
-            echo -e "${DEBIAN_RED}${BOLD}Rebooting system in:${NC}"
-            for i in 5 4 3 2 1; do
-                echo -e "${DEBIAN_RED}${BOLD}${i}...${NC}"
-                sleep 1
-            done
-            echo -e "${DEBIAN_RED}${BOLD}Rebooting now!${NC}"
-            sudo reboot
-            ;;
-        *)
-            echo -e "${DEBIAN_RED}${BOLD}Reboot postponed. Please restart your system when convenient.${NC}"
-            ;;
-    esac
 else
-    echo -e "${DEBIAN_RED}${BOLD}Upgrade complete! System is up-to-date.${NC}"
+    echo -e "${YELLOW}Skipping cleanup step. Party on!${RESET}"
 fi
 
-echo ""
+# Service Inspection via needrestart
+if command -v needrestart >/dev/null 2>&1; then
+    echo -e "\n${BOLD}--- [ Service Restart Inspection (needrestart) ] ---${RESET}"
+    sudo needrestart -b || true
+fi
+
+# Trigger background status refresh
+echo -e "\n${CYAN}Refreshing background status cache...${RESET}"
+sudo systemctl start debian-update-check.service || true
+
+echo -e "\n${GREEN}${BOLD}BODACIOUS! Upgrade complete! System is up-to-date.${RESET}\n"
 read -p "Press [ENTER] to exit..."

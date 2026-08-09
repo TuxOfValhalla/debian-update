@@ -12,8 +12,9 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QFileSystemWatcher, QTimer
 
 STATUS_FILE = "/var/cache/debian-update/status.json"
-ICON_OK = "/usr/share/icons/hicolor/scalable/apps/debian-update-ok.png"
-ICON_PENDING = "/usr/share/icons/hicolor/scalable/apps/debian-update-pending.png"
+ICON_OK = "/usr/share/icons/hicolor/128x128/apps/debian-update-ok.png"
+ICON_PENDING = "/usr/share/icons/hicolor/128x128/apps/debian-update-pending.png"
+ICON_CHECKING = "/usr/share/icons/hicolor/128x128/apps/debian-update-checking.png"
 
 def get_time_since_last_check(data):
     if not data or "last_check" not in data:
@@ -95,13 +96,16 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         self.activated.connect(self.on_activated)
 
+        cache_dir = os.path.dirname(STATUS_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+
         self.watcher = QFileSystemWatcher()
+        self.watcher.addPath(cache_dir)
         if os.path.exists(STATUS_FILE):
             self.watcher.addPath(STATUS_FILE)
-        else:
-            os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 
         self.watcher.fileChanged.connect(self.update_ui)
+        self.watcher.directoryChanged.connect(self.update_ui)
 
         self.poll_timer = QTimer()
         self.poll_timer.timeout.connect(self.update_ui)
@@ -123,6 +127,9 @@ class DebianUpdateTray(QSystemTrayIcon):
             return None
 
     def update_ui(self):
+        if os.path.exists(STATUS_FILE) and STATUS_FILE not in self.watcher.files():
+            self.watcher.addPath(STATUS_FILE)
+
         data = self.load_status()
         self.menu.clear()
 
@@ -134,12 +141,17 @@ class DebianUpdateTray(QSystemTrayIcon):
             held_list = data.get("apt_held_back", [])
             flatpak_list = data.get("flatpak_updates", [])
             reboot_req = data.get("reboot_required", False)
+            sb_info = data.get("secure_boot", {})
+            sb_warnings = sb_info.get("warnings", [])
 
             total_updates = len(apt_list) + len(flatpak_list)
 
-            if total_updates > 0 or len(held_list) > 0 or reboot_req:
+            # Tilstandsbasert ikonoppsett
+            if total_updates > 0:
+                # Tilgjengelige oppdateringer -> Rød pil ned
                 self.setIcon(QIcon(ICON_PENDING))
             else:
+                # Alt oppdatert -> Liten grønn hake
                 self.setIcon(QIcon(ICON_OK))
 
             if total_updates > 0 and total_updates != self.last_notified_count:
@@ -160,9 +172,11 @@ class DebianUpdateTray(QSystemTrayIcon):
                 tooltip += f"\n• Held Back: {len(held_list)}"
             if reboot_req:
                 tooltip += "\nSystem Reboot Recommended!"
+            if sb_warnings:
+                tooltip += f"\nWarnings: {len(sb_warnings)}"
             self.setToolTip(tooltip)
 
-            pending_menu = self.menu.addMenu(f"Available Updates ({total_updates})")
+            pending_menu = self.menu.addMenu(f"Updates available ({total_updates})")
 
             if len(apt_list) > 0:
                 pending_menu.addSection(f"APT Packages ({len(apt_list)})")
@@ -190,6 +204,14 @@ class DebianUpdateTray(QSystemTrayIcon):
                 no_up.setEnabled(False)
                 pending_menu.addAction(no_up)
 
+            if sb_warnings:
+                self.menu.addSeparator()
+                warn_menu = self.menu.addMenu(f"Security Warnings ({len(sb_warnings)})")
+                for w in sb_warnings:
+                    w_action = QAction(f"  {w}", self)
+                    w_action.setEnabled(False)
+                    warn_menu.addAction(w_action)
+
         self.menu.addSeparator()
 
         time_since = get_time_since_last_check(data)
@@ -205,11 +227,11 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         self.menu.addSeparator()
 
-        check_action = QAction("Check for Updates Now", self)
+        check_action = QAction("Check for updates", self)
         check_action.triggered.connect(self.trigger_check)
         self.menu.addAction(check_action)
 
-        upgrade_action = QAction("Launch Upgrade", self)
+        upgrade_action = QAction("Update now", self)
         upgrade_action.triggered.connect(self.launch_upgrade)
         self.menu.addAction(upgrade_action)
 
@@ -220,6 +242,9 @@ class DebianUpdateTray(QSystemTrayIcon):
         self.menu.addAction(quit_action)
 
     def trigger_check(self):
+        # Vis 'checking' ikonet (to piler: grønn høyre, rød venstre) umiddelbart
+        self.setIcon(QIcon(ICON_CHECKING))
+        self.setToolTip("Debian Update: Checking for updates...")
         subprocess.Popen(["systemctl", "start", "debian-update-check.service"])
 
     def launch_upgrade(self):

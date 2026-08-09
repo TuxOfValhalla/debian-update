@@ -3,25 +3,28 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.2.5-1"
+VERSION="0.3.0-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
-OUTPUT_DEB="${DEV_DIR}/${PKG_NAME}.deb"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
+VERSIONED_DEB="${DEV_DIR}/releases/debian-update_${VERSION}_all.deb"
 
 SRC_DIR="${DEV_DIR}"
 
-echo "==> Preparing Debian package directory structure in /tmp for v${VERSION}..."
+echo "==> Forbereder pakkestruktur i /tmp for v${VERSION}..."
 rm -rf "${BUILD_ROOT}"
 mkdir -p "${BUILD_ROOT}/DEBIAN"
 mkdir -p "${BUILD_ROOT}/usr/bin"
 mkdir -p "${BUILD_ROOT}/usr/lib/debian-update"
 mkdir -p "${BUILD_ROOT}/usr/share/debian-update/lib"
 mkdir -p "${BUILD_ROOT}/usr/share/applications"
-mkdir -p "${BUILD_ROOT}/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps"
+mkdir -p "${BUILD_ROOT}/usr/share/doc/debian-update"
 mkdir -p "${BUILD_ROOT}/usr/lib/systemd/system"
+mkdir -p "${BUILD_ROOT}/etc/polkit-1/rules.d"
+mkdir -p "${DEV_DIR}/releases"
 
-echo "==> Copying application files..."
+echo "==> Kopierer applikasjonsfiler, ikoner og lisens..."
 cp "${SRC_DIR}/bin/debian-update-cli" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/lib/debian-update-tray" "${BUILD_ROOT}/usr/lib/debian-update/"
 cp "${SRC_DIR}/lib/check_backend.sh" "${BUILD_ROOT}/usr/share/debian-update/lib/"
@@ -29,27 +32,35 @@ cp "${SRC_DIR}/desktop/debian-update-tray.desktop" "${BUILD_ROOT}/usr/share/appl
 cp "${SRC_DIR}/systemd/debian-update-check.service" "${BUILD_ROOT}/usr/lib/systemd/system/"
 cp "${SRC_DIR}/systemd/debian-update-check.timer" "${BUILD_ROOT}/usr/lib/systemd/system/"
 
-if [ -f "/usr/share/icons/hicolor/scalable/apps/debian-update-ok.png" ]; then
-    cp /usr/share/icons/hicolor/scalable/apps/debian-update-*.png "${BUILD_ROOT}/usr/share/icons/hicolor/scalable/apps/" 2>/dev/null || true
+if [ -f "${SRC_DIR}/LICENSE" ]; then
+    cp "${SRC_DIR}/LICENSE" "${BUILD_ROOT}/usr/share/doc/debian-update/copyright"
 fi
 
-echo "==> Writing DEBIAN/control..."
-cat << 'CONTROL_EOF' > "${BUILD_ROOT}/DEBIAN/control"
+if [ -f "${SRC_DIR}/assets/debian-update-ok.png" ]; then
+    cp "${SRC_DIR}"/assets/debian-update-*.png "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps/"
+fi
+
+if [ -f "${SRC_DIR}/polkit/50-debian-update.rules" ]; then
+    cp "${SRC_DIR}/polkit/50-debian-update.rules" "${BUILD_ROOT}/etc/polkit-1/rules.d/"
+fi
+
+echo "==> Skriver DEBIAN/control..."
+cat << CONTROL_EOF > "${BUILD_ROOT}/DEBIAN/control"
 Package: debian-update
-Version: 0.2.5-1
+Version: ${VERSION}
 Section: admin
 Priority: optional
 Architecture: all
 Maintainer: tux <tux@localhost>
-Depends: bash, python3, python3-pyqt5, systemd, coreutils, apt
-Recommends: flatpak, apt-listbugs, needrestart
+Depends: python3, python3-pyqt5, python3-pyqt5.qtsvg, systemd, needrestart
+Recommends: flatpak, apt-listbugs, mokutil, sbsigntool
 Description: System tray indicator and CLI upgrade suite for Debian Testing/Sid
  A lightweight system tray applet and CLI suite for Debian.
- Periodically checks APT & Flatpak updates via systemd, safely
- upgrades packages, and cleans orphan dependencies.
+ Periodically checks APT & Flatpak updates via systemd, verifies Secure Boot
+ and kernel/NVIDIA signatures, safely upgrades packages, and cleans orphan dependencies.
 CONTROL_EOF
 
-echo "==> Writing DEBIAN/postinst..."
+echo "==> Skriver DEBIAN/postinst..."
 cat << 'POSTINST_EOF' > "${BUILD_ROOT}/DEBIAN/postinst"
 #!/bin/sh
 set -e
@@ -72,7 +83,7 @@ exit 0
 POSTINST_EOF
 chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"
 
-echo "==> Writing DEBIAN/prerm..."
+echo "==> Skriver DEBIAN/prerm..."
 cat << 'PRERM_EOF' > "${BUILD_ROOT}/DEBIAN/prerm"
 #!/bin/sh
 set -e
@@ -94,7 +105,7 @@ exit 0
 PRERM_EOF
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
-echo "==> Setting standard permissions..."
+echo "==> Setter standard tillatelser..."
 find "${BUILD_ROOT}" -type d -exec chmod 755 {} \;
 find "${BUILD_ROOT}" -type f -exec chmod 644 {} \;
 chmod 755 "${BUILD_ROOT}/usr/bin/debian-update-cli"
@@ -103,12 +114,12 @@ chmod 755 "${BUILD_ROOT}/usr/share/debian-update/lib/check_backend.sh"
 chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
-echo "==> Building .deb package..."
-dpkg-deb --build "${BUILD_ROOT}" "${OUTPUT_DEB}"
+echo "==> Bygger debian-update.deb..."
+dpkg-deb --build "${BUILD_ROOT}" "${GENERIC_DEB}"
 
-cp "${OUTPUT_DEB}" "${GENERIC_DEB}"
+cp "${GENERIC_DEB}" "${VERSIONED_DEB}"
 rm -rf "${BUILD_ROOT}"
 
-echo -e "\n\033[1;32mEXCELLENT: Package built successfully\033[0m"
-echo -e " • Versioned: ${OUTPUT_DEB}"
-echo -e " • Generic:   ${GENERIC_DEB}"
+echo -e "\n\033[1;32mEXCELLENT! Built debian-update.deb successfully (v${VERSION})\033[0m"
+echo -e " • Hovedpakke:     ${GENERIC_DEB}"
+echo -e " • Release-arkiv: ${VERSIONED_DEB}"

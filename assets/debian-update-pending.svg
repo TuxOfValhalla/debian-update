@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Debian Swirl Pure Vector -->
+  <g fill="#D70A53" transform="translate(0, -2)">
+    <path d="M 62.5 12 C 34.1 12 11 35.1 11 63.5 C 11 91.9 34.1 115 62.5 115 C 72.8 115 82.3 111.9 90.2 106.6 C 88.1 103.8 85.2 101.5 81.8 100.1 C 75.8 103.8 68.7 106 61 106 C 37.8 106 19 87.2 19 64 C 19 40.8 37.8 22 61 22 C 84.2 22 103 40.8 103 64 C 103 69.8 101.8 75.3 99.6 80.3 C 103 82.2 105.8 84.8 107.8 88 C 110.5 80.8 112 72.9 112 64.5 C 112 35.5 89.8 12 62.5 12 Z M 61 31 C 42.8 31 28 45.8 28 64 C 28 82.2 42.8 97 61 97 C 66.8 97 72.3 95.5 77 92.9 C 74.5 90 71.2 87.8 67.4 86.6 C 65.4 87.5 63.3 88 61 88 C 47.7 88 37 77.3 37 64 C 37 50.7 47.7 40 61 40 C 74.3 40 85 50.7 85 64 C 85 66.3 84.5 68.4 83.6 70.4 C 86.8 71.2 89.6 72.8 91.9 75.1 C 93.9 71.7 95 67.8 95 63.5 C 95 45.5 79.8 31 61 31 Z"/>
+  </g>
+  <!-- Pending Badge -->
+  <circle cx="94" cy="94" r="28" fill="#1E293B" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(76, 76)">
+    <path fill="none" stroke="#10B981" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M 5 18 L 5 6 L 17 6"/>
+    <path fill="none" stroke="#10B981" stroke-width="4.5" stroke-linecap="round" d="M 5 6 L 19 20"/>
+  </g>
+  <g transform="translate(86, 86)">
+    <path fill="none" stroke="#EF4444" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M 21 8 L 21 20 L 9 20"/>
+    <path fill="none" stroke="#EF4444" stroke-width="4.5" stroke-linecap="round" d="M 21 20 L 7 6"/>
+  </g>
+</svg>
