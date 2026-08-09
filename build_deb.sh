@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.3.0-1"
+VERSION="0.3.1-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -56,7 +56,7 @@ Depends: python3, python3-pyqt5, python3-pyqt5.qtsvg, systemd, needrestart
 Recommends: flatpak, apt-listbugs, mokutil, sbsigntool
 Description: System tray indicator and CLI upgrade suite for Debian Testing/Sid
  A lightweight system tray applet and CLI suite for Debian.
- Periodically checks APT & Flatpak updates via systemd, verifies Secure Boot
+ Periodically checks APT & Flatpak via systemd, verifies Secure Boot
  and kernel/NVIDIA signatures, safely upgrades packages, and cleans orphan dependencies.
 CONTROL_EOF
 
@@ -72,6 +72,8 @@ case "$1" in
 
         if command -v systemctl >/dev/null 2>&1; then
             systemctl daemon-reload || true
+            systemctl enable --now debian-update-check.timer || true
+            systemctl start debian-update-check.service || true
         fi
 
         if command -v gtk-update-icon-cache >/dev/null 2>&1; then
@@ -121,5 +123,3 @@ cp "${GENERIC_DEB}" "${VERSIONED_DEB}"
 rm -rf "${BUILD_ROOT}"
 
 echo -e "\n\033[1;32mEXCELLENT! Built debian-update.deb successfully (v${VERSION})\033[0m"
-echo -e " • Hovedpakke:     ${GENERIC_DEB}"
-echo -e " • Release-arkiv: ${VERSIONED_DEB}"
