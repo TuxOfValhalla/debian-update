@@ -1,72 +1,78 @@
-# Debian Update Suite
+# debian-update
 
-A lightweight system tray indicator and interactive CLI upgrade suite for Debian (optimized for Testing and Sid branches).
-It periodically checks for APT, 3rd-party .deb (`deb-get`), Flatpak, and AppImage updates in the background using a systemd timer, alerts you via a system tray icon, and allows you to execute safe upgrades in your preferred terminal emulator.
+A lightweight, multi-source update management system and system tray integration designed specifically for Debian (including Debian Sid).
 
-> **Note & Disclaimer:** This package was built with the help of AI, but has been quality controlled, tested, and used by myself to make sure it works. This application is currently in an alpha stage and will continue to receive updates in the future.
+> **Disclaimer:** This software is developed with the assistance of AI, but is actively maintained, debugged, and used daily by the author in a production environment to identify and fix issues.
 
-<h3>📸 Screenshots</h3>
+---
 
-<p align="center">
-  <b>System Tray Applet</b><br>
-  <img src="./assets/tray_preview1.png" width="30%" alt="Tray 1" />
-  <img src="./assets/tray_preview2.png" width="30%" alt="Tray 2" />
-  <img src="./assets/tray_preview3.png" width="30%" alt="Tray 3" />
+## 📸 Screenshots & Previews
+
+### System Tray Integration
+<p float="left">
+  <img src="assets/systray_preview01.png" width="220" alt="System Tray Preview" />
+  <img src="assets/systray_dropdown_menu.png" width="220" alt="System Tray Menu" />
+  <img src="assets/systray_updates_submenu.png" width="220" alt="Updates Submenu" />
 </p>
 
-<p align="center">
-  <b>Interactive CLI Suite</b><br>
-  <img src="./assets/terminal_preview1.png" width="45%" alt="CLI 1" />
-  <img src="./assets/terminal_preview2.png" width="45%" alt="CLI 2" />
+### Command Line Interface (CLI)
+<p float="left">
+  <img src="assets/CLI_tool.png" width="650" alt="CLI Tool Overview" />
 </p>
 
-## ⚡ Features
+<p float="left">
+  <img src="assets/CLI_tool_deb_packages.png" width="650" alt="Third-Party DEB Manager" />
+</p>
 
-* **4-Engine Update Manager:** Automatically checks and updates APT packages, 3rd-Party `.deb` files (`deb-get`), Flatpaks, and AppImages (`AM` / `appimageupdatetool`).
-* **Interactive 3rd-Party .deb Installer:** Includes a dedicated `Get .deb files` tray option (`debian-update-debget`) for searching, installing, and listing curated `.deb` packages (Chrome, VS Code, Discord, Spotify, etc.).
-* **60s Timeout Guard:** Prevents CLI or background update freezes if 3rd-party mirrors or remote repositories stall.
-* **3-State System Tray Indicator:** Real-time icons (🟢 OK, 🔴 Updates Pending, 🔄 Checking), showing individual package counts for all 4 format types, held-back packages, reboot flags, and Secure Boot status.
-* **Safety First:** Executes standard `apt upgrade` (no destructive `full-upgrade`) and checks for open bugs via `apt-listbugs`.
-* **Universal Terminal Detection:** Automatically detects and launches your preferred terminal (`konsole`, `gnome-terminal`, `ptyxis`, `xfce4-terminal`, `alacritty`, `kitty`, `foot`, etc.).
-* **System Cleanup & Inspection:** Interactive prompts for clearing package caches, removing unused Flatpaks, purging orphan dependencies (`autoremove`), and checking active services with `needrestart`.
+---
 
-## 📦 Installation
+## ✨ Features
 
-### Option 1: Download Latest Release .deb (Recommended)
+* **Multi-Source Update Tracking:**
+  * **APT Packages:** Native APT update checks using dist-upgrade simulation mode for accurate tracking during Debian Sid/testing library transitions.
+  * **Third-Party .deb Packages (Optional):** Integrated management via deb-get (*100% optional*).
+  * **Flatpaks:** Checks system and user Flatpak applications and runtimes.
+  * **AppImages (Optional):** Scans and updates AppImages using AM or appimageupdatetool (*100% optional*).
 
-For quick installation without building from source, download `debian-update.deb` from [GitHub Releases](https://github.com/TuxOfValhalla/debian-update/releases/latest) and run:
+* **Self-Updating Mechanism:**
+  * Checks GitHub Releases prior to running system updates.
+  * Safely upgrades its own .deb package in-place using RAM buffering and process re-execution without interrupting execution.
+  * *Notice: If you experience any issues with self-updating, please submit an issue on GitHub for immediate resolution.*
+
+* **Desktop Integration:**
+  * **Background Service:** Periodic checks managed by a non-intrusive systemd timer (OnBootSec=2min, OnUnitActiveSec=1h).
+  * **System Tray Indicator:** Qt-based status icon displaying pending update counts in tooltip and context menu.
+  * **Notifications:** Native desktop notifications via KDE Plasma / Freedesktop notification daemon.
+
+---
+
+## 🚀 Installation
+
+### Standard Installation
+Download  from the latest GitHub Release and install it:
 
 ```bash
 sudo apt install ./debian-update.deb
 ```
 
-### Option 2: Clone & Build from Source
+### Building from Source
+Clone the repository, build, and install:
 
-If you want to contribute, test the latest development commits, or build the `.deb` package yourself:
-
-1. **Clone the repository:**
 ```bash
-git clone https://github.com/TuxOfValhalla/debian-update.git
+git clone [https://github.com/tux/debian-update.git](https://github.com/tux/debian-update.git)
 cd debian-update
-```
-
-2. **Make the build script executable and build:**
-```bash
-chmod +x build_deb.sh
 ./build_deb.sh
-```
-
-3. **Install the built package:**
-```bash
 sudo apt install ./debian-update.deb
 ```
 
-## ⚖️ Disclaimer & Trademarks
+> **Note:** The package file is always compiled as  (without version numbers) for consistency when installing locally.
 
-* Debian is a registered trademark owned by Software in the Public Interest, Inc.
-* This project (`debian-update`) is an independent open-source tool and is not officially affiliated with, endorsed by, or sponsored by the Debian Project or Software in the Public Interest, Inc.
-* The Debian Logo is used under the terms of the Debian Open Use Logo license (LGPLv3 / CC BY-SA 3.0).
+---
 
-## 📄 License
+## 📄 License & Disclaimer
 
-This project is licensed under the GNU General Public License v3.0 (GPLv3).
+Distributed under the **GPL-3.0 License**.
+
+### ⚠️ Project & Trademark Disclaimer
+* **Independent Project:**  is an independent open-source tool and is **not** affiliated with, endorsed by, or part of the official Debian Project.
+* **Logo Usage:** The Debian logo and trademark are property of Software in the Public Interest, Inc. (SPI) and are used under the Debian Logo License / fair use principles for project identification purposes only.

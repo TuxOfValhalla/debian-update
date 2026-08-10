@@ -48,7 +48,8 @@ def get_next_check_in():
         out_status = subprocess.check_output(
             ["systemctl", "status", "debian-update-check.timer"],
             stderr=subprocess.DEVNULL,
-            text=True
+            text=True,
+            timeout=3
         )
         for line in out_status.splitlines():
             if "Trigger:" in line and "left" in line:
@@ -61,14 +62,15 @@ def get_next_check_in():
                     cleaned = re.sub(r'(\d+)\s*days?', r'\1d', cleaned)
                     cleaned = re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
                     return cleaned
-    except Exception:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
         pass
 
     try:
         out_timers = subprocess.check_output(
             ["systemctl", "list-timers", "--all"],
             stderr=subprocess.DEVNULL,
-            text=True
+            text=True,
+            timeout=3
         )
         for line in out_timers.splitlines():
             if "debian-update-check.timer" in line:
@@ -80,7 +82,7 @@ def get_next_check_in():
                     cleaned = re.sub(r'(\d+)\s*days?', r'\1d', cleaned)
                     cleaned = re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
                     return cleaned
-    except Exception:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
         pass
 
     return "Unknown"
@@ -120,11 +122,13 @@ class DebianUpdateTray(QSystemTrayIcon):
     def load_status(self):
         if not os.path.exists(STATUS_FILE):
             return None
-        try:
-            with open(STATUS_FILE, 'r') as f:
-                return json.load(f)
-        except Exception:
-            return None
+        for _ in range(2):
+            try:
+                with open(STATUS_FILE, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, OSError):
+                time.sleep(0.05)
+        return None
 
     def update_ui(self):
         if os.path.exists(STATUS_FILE) and STATUS_FILE not in self.watcher.files():
@@ -135,7 +139,7 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         if not data:
             self.setIcon(QIcon(ICON_OK))
-            self.setToolTip("Debian Update: Status unknown")
+            self.setToolTip("System is up to date")
         else:
             apt_list = data.get("apt_updates", [])
             debget_list = data.get("debget_updates", [])
@@ -157,24 +161,34 @@ class DebianUpdateTray(QSystemTrayIcon):
                 self.showMessage(
                     "Debian Update",
                     f"{total_updates} updates available",
-                    QSystemTrayIcon.Information,
+                    self.icon(),
                     5000
                 )
                 self.last_notified_count = total_updates
             elif total_updates == 0:
                 self.last_notified_count = 0
 
-            tooltip = f"Debian Updates Available: {total_updates}\n"
-            tooltip += f"• APT: {len(apt_list)}\n"
-            tooltip += f"• Third-Party .deb: {len(debget_list)}\n"
-            tooltip += f"• Flatpak: {len(flatpak_list)}\n"
-            tooltip += f"• AppImages: {len(appimage_list)}"
+            # Dynamic tooltip design
+            if total_updates == 0:
+                tooltip = "System is up to date"
+            else:
+                tooltip = f"Updates available: {total_updates}"
+                if len(apt_list) > 0:
+                    tooltip += f"\n• APT: {len(apt_list)}"
+                if len(debget_list) > 0:
+                    tooltip += f"\n• Third-Party .deb: {len(debget_list)}"
+                if len(flatpak_list) > 0:
+                    tooltip += f"\n• Flatpak: {len(flatpak_list)}"
+                if len(appimage_list) > 0:
+                    tooltip += f"\n• AppImages: {len(appimage_list)}"
+
             if len(held_list) > 0:
                 tooltip += f"\n• Held Back: {len(held_list)}"
             if reboot_req:
                 tooltip += "\nSystem Reboot Recommended!"
             if sb_warnings:
                 tooltip += f"\nWarnings: {len(sb_warnings)}"
+
             self.setToolTip(tooltip)
 
             pending_menu = self.menu.addMenu(f"Updates available ({total_updates})")
@@ -263,10 +277,9 @@ class DebianUpdateTray(QSystemTrayIcon):
     def trigger_check(self):
         self.setIcon(QIcon(ICON_CHECKING))
         self.setToolTip("Debian Update: Checking for updates...")
+        self.app.processEvents()
         try:
-            res = subprocess.run(["systemctl", "start", "debian-update-check.service"], capture_output=True, text=True)
-            if res.returncode != 0:
-                subprocess.Popen(["pkexec", "systemctl", "start", "debian-update-check.service"])
+            subprocess.Popen(["systemctl", "start", "--no-block", "debian-update-check.service"])
         except Exception:
             pass
 
@@ -292,7 +305,7 @@ class DebianUpdateTray(QSystemTrayIcon):
             ("gnome-terminal", ["gnome-terminal", f"--title={title}", "--"] + cmd),
             ("ptyxis", ["ptyxis", f"--title={title}", "--"] + cmd),
             ("xfce4-terminal", ["xfce4-terminal", f"--title={title}", "-e"] + cmd),
-            ("mate-terminal", ["mate-terminal", f"--title={title}", "-e"] + cmd),
+            ("mate-terminal", ["mate-terminal", f"--title={title}", "--"] + cmd),
             ("tilix", ["tilix", "-t", title, "-e"] + cmd),
             ("alacritty", ["alacritty", "-t", title, "-e"] + cmd),
             ("kitty", ["kitty", "-T", title] + cmd),

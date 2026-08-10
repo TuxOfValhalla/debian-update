@@ -1,84 +1,57 @@
 #!/usr/bin/env bash
-# debian-update-debget v0.4.0
+# debian-update-debget v0.5.7
 set -euo pipefail
 
-export NEEDRESTART_MODE=a
+trap 'echo -e "\nExiting."; exit 0' INT TERM
 
 BOLD="\033[1m"
 GREEN="\033[1;32m"
-YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
-RED="\033[1;31m"
 RESET="\033[0m"
 
-echo -e "${CYAN}${BOLD}=== Debian-Update: Third-Party .deb Installer (deb-get) ===${RESET}\n"
+echo -e "${CYAN}${BOLD}Debian-Update: Third-Party .deb Package Manager (deb-get)${RESET}\n"
 
 if ! command -v deb-get >/dev/null 2>&1; then
-    echo -e "${YELLOW}deb-get is not currently installed on your system.${RESET}"
-    echo -e "deb-get allows you to easily install and update curated 3rd-party .deb packages"
-    echo -e "(e.g., Google Chrome, VS Code, Discord, Signal, Spotify, Steam).\n"
-    read -p "Would you like to install deb-get now? [y/N] " -n 1 -r REPLY
-    echo
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "${GREEN}Installing dependencies and deb-get...${RESET}"
-        sudo NEEDRESTART_MODE=a apt update && sudo NEEDRESTART_MODE=a apt install -y curl ca-certificates jq lsb-release wget
-        curl -sL https://raw.githubusercontent.com/wimpysworld/deb-get/main/deb-get | sudo NEEDRESTART_MODE=a -E bash -s install deb-get
-        
-        if command -v deb-get >/dev/null 2>&1; then
-            echo -e "${GREEN}Running initial deb-get update...${RESET}"
-            sudo NEEDRESTART_MODE=a deb-get update || true
-            echo -e "\n${GREEN}deb-get was installed successfully.${RESET}\n"
-            read -p "Press [ENTER] to continue to the menu..."
-        else
-            echo -e "${RED}Failed to install deb-get. Please check your network connection and try again.${RESET}"
-            read -p "Press [ENTER] to exit..."
-            exit 1
-        fi
-    else
-        echo -e "${YELLOW}Skipping deb-get installation.${RESET}"
-        read -p "Press [ENTER] to exit..."
-        exit 0
-    fi
+    echo "deb-get is not installed on this system."
+    read -r -p "Press [ENTER] to exit..." || true
+    exit 1
 fi
 
 while true; do
-    echo -e "\n${BOLD}Select an action:${RESET}"
-    echo -e " 1) ${CYAN}Search for 3rd-party .deb packages${RESET}"
-    echo -e " 2) ${GREEN}Install a .deb package${RESET}"
-    echo -e " 3) ${YELLOW}List installed 3rd-party packages${RESET}"
-    echo -e " 4) ${CYAN}List all available 3rd-party packages${RESET}"
-    echo -e " 5) ${RED}Exit${RESET}"
-    
-    read -p "Enter choice [1-5]: " CHOICE
+    echo "Available actions:"
+    echo " 1) List installed third-party .deb packages"
+    echo " 2) Search for a package"
+    echo " 3) Install a package"
+    echo " 4) Update deb-get repository index"
+    echo " Q) Exit"
+    echo ""
+    read -r -p "Select option [1-4, Q]: " CHOICE || CHOICE="q"
+
     case "$CHOICE" in
         1)
-            read -p "Enter search term: " SEARCH_TERM
-            if [ -n "$SEARCH_TERM" ]; then
-                echo -e "\n${CYAN}Searching deb-get repository for '${SEARCH_TERM}'...${RESET}"
-                deb-get search "$SEARCH_TERM" || true
-            fi
+            echo -e "\n${GREEN}Installed packages via deb-get:${RESET}"
+            deb-get list || true
             ;;
         2)
-            read -p "Enter package name to install: " PKG_NAME
-            if [ -n "$PKG_NAME" ]; then
-                echo -e "\n${GREEN}Installing '${PKG_NAME}' via deb-get...${RESET}"
-                sudo NEEDRESTART_MODE=a deb-get install "$PKG_NAME" || true
+            read -r -p "Enter package name to search (or ENTER to cancel): " PKG || PKG=""
+            if [ -n "$PKG" ]; then
+                deb-get search "$PKG" || true
             fi
             ;;
         3)
-            echo -e "\n${YELLOW}Currently installed 3rd-party packages:${RESET}"
-            deb-get list | grep -i "installed" || true
+            read -r -p "Enter package name to install (or ENTER to cancel): " PKG || PKG=""
+            if [ -n "$PKG" ]; then
+                sudo deb-get install "$PKG" || true
+            fi
             ;;
         4)
-            echo -e "\n${CYAN}All available 3rd-party packages in deb-get:${RESET}"
-            deb-get list || true
+            echo -e "\n${GREEN}Updating deb-get index...${RESET}"
+            sudo deb-get update || true
             ;;
-        5)
-            echo -e "\n${GREEN}Exiting deb-get manager.${RESET}"
-            break
-            ;;
-        *)
-            echo -e "${RED}Invalid choice, try again.${RESET}"
+        q|Q|5|*)
+            echo "Exiting."
+            exit 0
             ;;
     esac
+    echo ""
 done
