@@ -49,17 +49,17 @@ A lightweight, multi-source update management system and system tray integration
 ## 🚀 Installation
 
 ### Option A: Download Pre-built Package
-Download  from the latest GitHub Release.
+Download `debian-update.deb` from the latest GitHub Release.
 
 ### Option B: Build from Source
 ```bash
-git clone [https://github.com/TuxOfValhalla/debian-update.git](https://github.com/TuxOfValhalla/debian-update.git)
+git clone https://github.com/TuxOfValhalla/debian-update.git
 cd debian-update
 ./build_deb.sh
 ```
 
 ### Install Package
-Install the  package (whether downloaded or self-built):
+Install the `.deb` package (whether downloaded or self-built):
 
 ```bash
 sudo apt install ./debian-update.deb
@@ -72,5 +72,5 @@ sudo apt install ./debian-update.deb
 Distributed under the **GPL-3.0 License**.
 
 ### ⚠️ Project & Trademark Disclaimer
-* **Independent Project:**  is an independent open-source tool and is **not** affiliated with, endorsed by, or part of the official Debian Project.
+* **Independent Project:** `debian-update` is an independent open-source tool and is **not** affiliated with, endorsed by, or part of the official Debian Project.
 * **Logo Usage:** The Debian logo and trademark are property of Software in the Public Interest, Inc. (SPI) and are used under the Debian Logo License / fair use principles for project identification purposes only.
