@@ -2,7 +2,9 @@
 
 A lightweight, multi-source update management system and system tray integration designed specifically for Debian (including Debian Sid).
 
-> **Disclaimer:** This software is developed with the assistance of AI, but is actively maintained, debugged, and used daily by the author in a production environment to identify and fix issues.
+> **Disclaimer:** This software is developed with the assistance of AI, but is actively maintained, debugged, and used daily by the author in a production environment to identify and fix issues. 
+This software should be considered as being in the Alpha phase of development, or in early release, until version 1.0.0 is released.
+Use of this software should be safe, as it is rigorously tested by me, but as always, install on your own risk, and please give feedback if you want features, or if there are annoyances or bugs in the software that you would like me to fix.
 
 ---
 
