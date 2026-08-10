@@ -59,7 +59,7 @@ sudo apt install ./debian-update.deb
 Clone the repository, build, and install:
 
 ```bash
-git clone [https://github.com/tux/debian-update.git](https://github.com/tux/debian-update.git)
+git clone [https://github.com/TuxOfValhalla/debian-update.git](https://github.com/TuxOfValhalla/debian-update.git)
 cd debian-update
 ./build_deb.sh
 sudo apt install ./debian-update.deb
