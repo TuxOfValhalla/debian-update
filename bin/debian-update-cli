@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# debian-update-cli v0.5.7
+# debian-update-cli v0.5.8
 set -euo pipefail
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.5.7"
+CURRENT_VERSION="0.5.8"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"

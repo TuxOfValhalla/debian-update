@@ -135,6 +135,8 @@ class DebianUpdateTray(QSystemTrayIcon):
             self.watcher.addPath(STATUS_FILE)
 
         data = self.load_status()
+        if self.menu.isVisible():
+            return
         self.menu.clear()
 
         if not data:
