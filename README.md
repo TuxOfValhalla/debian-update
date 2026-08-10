@@ -67,6 +67,14 @@ sudo apt install ./debian-update.deb
 
 ---
 
+## ☕ Support the Project
+
+If you find `debian-update` useful and want to buy me a coffee to support development:
+
+[![buy me a coffee](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/tuxofvalhalla)
+
+---
+
 ## 📄 License & Disclaimer
 
 Distributed under the **GPL-3.0 License**.
