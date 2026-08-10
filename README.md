@@ -48,24 +48,22 @@ A lightweight, multi-source update management system and system tray integration
 
 ## 🚀 Installation
 
-### Standard Installation
-Download  from the latest GitHub Release and install it:
+### Option A: Download Pre-built Package
+Download  from the latest GitHub Release.
 
-```bash
-sudo apt install ./debian-update.deb
-```
-
-### Building from Source
-Clone the repository, build, and install:
-
+### Option B: Build from Source
 ```bash
 git clone [https://github.com/TuxOfValhalla/debian-update.git](https://github.com/TuxOfValhalla/debian-update.git)
 cd debian-update
 ./build_deb.sh
-sudo apt install ./debian-update.deb
 ```
 
-> **Note:** The package file is always compiled as  (without version numbers) for consistency when installing locally.
+### Install Package
+Install the  package (whether downloaded or self-built):
+
+```bash
+sudo apt install ./debian-update.deb
+```
 
 ---
 
