@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.5.8-1"
+VERSION="0.6.7-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -121,9 +121,9 @@ chmod 755 "${BUILD_ROOT}/DEBIAN/postinst"
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
 echo "==> Building debian-update.deb..."
-dpkg-deb --build "${BUILD_ROOT}" "${GENERIC_DEB}"
+dpkg-deb --root-owner-group --build "${BUILD_ROOT}" "${GENERIC_DEB}"
 
 cp "${GENERIC_DEB}" "${VERSIONED_DEB}"
 rm -rf "${BUILD_ROOT}"
 
-echo -e "\n\033[1;32mEXCELLENT! Built debian-update.deb successfully (v${VERSION})! Party on, dudes!\033[0m"
+echo -e "\n\033[1;32mPackage built successfully: debian-update_${VERSION}_all.deb\033[0m"

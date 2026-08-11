@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# debian-update-debget v0.5.7
+# debian-update-debget v0.6.1
 set -euo pipefail
 
 trap 'echo -e "\nExiting."; exit 0' INT TERM
@@ -7,6 +7,7 @@ trap 'echo -e "\nExiting."; exit 0' INT TERM
 BOLD="\033[1m"
 GREEN="\033[1;32m"
 CYAN="\033[1;36m"
+YELLOW="\033[1;33m"
 RESET="\033[0m"
 
 echo -e "${CYAN}${BOLD}Debian-Update: Third-Party .deb Package Manager (deb-get)${RESET}\n"
@@ -25,7 +26,7 @@ while true; do
     echo " 4) Update deb-get repository index"
     echo " Q) Exit"
     echo ""
-    read -r -p "Select option [1-4, Q]: " CHOICE || CHOICE="q"
+    read -r -p "Select option [1-4, Q]: " CHOICE || CHOICE=""
 
     case "$CHOICE" in
         1)
@@ -34,23 +35,22 @@ while true; do
             ;;
         2)
             read -r -p "Enter package name to search (or ENTER to cancel): " PKG || PKG=""
-            if [ -n "$PKG" ]; then
-                deb-get search "$PKG" || true
-            fi
+            [ -n "$PKG" ] && deb-get search "$PKG" || true
             ;;
         3)
             read -r -p "Enter package name to install (or ENTER to cancel): " PKG || PKG=""
-            if [ -n "$PKG" ]; then
-                sudo deb-get install "$PKG" || true
-            fi
+            [ -n "$PKG" ] && sudo deb-get install "$PKG" || true
             ;;
         4)
             echo -e "\n${GREEN}Updating deb-get index...${RESET}"
             sudo deb-get update || true
             ;;
-        q|Q|5|*)
+        q|Q)
             echo "Exiting."
             exit 0
+            ;;
+        *)
+            echo -e "${YELLOW}Invalid option. Please try again.${RESET}"
             ;;
     esac
     echo ""

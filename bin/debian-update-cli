@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# debian-update-cli v0.5.8
+# debian-update-cli v0.6.7
 set -euo pipefail
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.5.8"
+CURRENT_VERSION="0.6.7"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"
@@ -72,43 +72,62 @@ except Exception:
 main() {
     echo -e "${CYAN}${BOLD}Debian-Update v${CURRENT_VERSION}${RESET}\n"
 
-    # Step 0: Self-Update Check
+    # Self-Update Check
     check_self_update "$@"
 
     STATUS_FILE="/var/cache/debian-update/status.json"
 
+    # Display Available Updates
     if [ -f "$STATUS_FILE" ]; then
-        echo -e "${BOLD}--- [ Pending Updates Summary ] ---${RESET}"
+        echo -e "${CYAN}${BOLD}Updates Available:${RESET}"
         python3 -c '
 import json
 try:
     with open("'"$STATUS_FILE"'") as f:
         d = json.load(f)
-        apt = d.get("apt_updates", [])
-        debget = d.get("debget_updates", [])
-        fp = d.get("flatpak_updates", [])
-        appimg = d.get("appimage_updates", [])
-        held = d.get("apt_held_back", [])
-        print(f" • APT Updates:         {len(apt)}")
-        print(f" • Third-Party .deb:    {len(debget)}")
-        print(f" • Flatpak Applications: {len(fp)}")
-        print(f" • AppImages:           {len(appimg)}")
-        print(f" • Held Back:           {len(held)}")
+        sources = [
+            ("APT", d.get("apt_updates", [])),
+            ("Third-Party .deb", d.get("debget_updates", [])),
+            ("Flatpak", d.get("flatpak_updates", [])),
+            ("AppImages", d.get("appimage_updates", [])),
+            ("Held Back", d.get("apt_held_back", [])),
+        ]
+        has_updates = False
+        for name, pkgs in sources:
+            if pkgs:
+                has_updates = True
+                print(f"\033[1;32m{name}:\033[0m")
+                for pkg in pkgs:
+                    print(f"  • {pkg}")
+        if not has_updates:
+            print("No pending updates found.")
 except Exception:
     pass
 '
         echo ""
     fi
 
-    # Step 1: APT Upgrade
-    echo -e "${BLUE}=== Step 1/4: Upgrading APT Packages ===${RESET}"
+    # Prompt First Logic
+    read -r -p "Continue with updates? [Y/n] " REPLY
+    REPLY=${REPLY:-Y}
+    if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
+        echo -e "\n${YELLOW}Operation cancelled by user. No changes made.${RESET}\n"
+        exit 0
+    fi
+
+    # Privilege Elevation
+    echo -e "\n${CYAN}Validating administrator privileges...${RESET}"
+    sudo -v
+
+    # APT Upgrade
+    echo -e "\n${BLUE}${BOLD}Upgrading APT Packages${RESET}"
     if command -v apt-listbugs >/dev/null 2>&1; then
         echo -e "${YELLOW}Checking Debian Bug Tracking System (apt-listbugs)...${RESET}"
     fi
     sudo NEEDRESTART_MODE=a apt upgrade
 
-    # Step 2: Third-Party .deb Upgrade (deb-get)
-    echo -e "\n${BLUE}=== Step 2/4: Upgrading Third-Party .deb Packages (deb-get) ===${RESET}"
+    # Third-Party .deb Upgrade (deb-get)
+    echo -e "\n${BLUE}${BOLD}Upgrading Third-Party .deb Packages (deb-get)${RESET}"
     if command -v deb-get >/dev/null 2>&1; then
         echo -e "${GREEN}Checking & upgrading 3rd-party .deb packages...${RESET}"
         sudo deb-get update >/dev/null 2>&1 || true
@@ -117,16 +136,16 @@ except Exception:
         echo "deb-get is not installed. Skipping."
     fi
 
-    # Step 3: Flatpak Upgrade
-    echo -e "\n${BLUE}=== Step 3/4: Upgrading Flatpak Packages ===${RESET}"
+    # Flatpak Upgrade
+    echo -e "\n${BLUE}${BOLD}Upgrading Flatpak Packages${RESET}"
     if command -v flatpak >/dev/null 2>&1; then
         flatpak update
     else
         echo "Flatpak is not installed. Skipping."
     fi
 
-    # Step 4: AppImage Upgrade
-    echo -e "\n${BLUE}=== Step 4/4: Upgrading AppImages ===${RESET}"
+    # AppImage Upgrade
+    echo -e "\n${BLUE}${BOLD}Upgrading AppImages${RESET}"
     if command -v am >/dev/null 2>&1; then
         echo -e "${GREEN}Updating AppImages via AM (AppImage Manager)...${RESET}"
         timeout 60s am update || echo -e "${YELLOW}AM update timed out (60s guard) or finished with warnings.${RESET}"
@@ -146,8 +165,8 @@ except Exception:
         echo "No AppImage management tools (AM / appimageupdatetool) detected. Skipping."
     fi
 
-    # Step 5: Interactive System Cleanup
-    echo -e "\n${BLUE}=== Step 5/5: System Cleanup & Service Inspection ===${RESET}"
+    # Interactive System Cleanup
+    echo -e "\n${BLUE}${BOLD}System Cleanup & Service Inspection${RESET}"
     read -r -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " REPLY
     if [[ "$REPLY" =~ ^[Yy]$ ]]; then
         echo -e "${GREEN}Running package cleanup...${RESET}"
@@ -161,7 +180,7 @@ except Exception:
 
     # Service Inspection via needrestart
     if command -v needrestart >/dev/null 2>&1; then
-        echo -e "\n${BOLD}--- [ Service Restart Inspection (needrestart) ] ---${RESET}"
+        echo -e "\n${BOLD}Service Restart Inspection (needrestart)${RESET}"
         sudo needrestart -b || true
     fi
 
@@ -169,12 +188,19 @@ except Exception:
     echo -e "\n${CYAN}Refreshing status cache...${RESET}"
     sudo systemctl start --no-block debian-update-check.service || true
 
-    echo -e "\n${GREEN}${BOLD}Upgrade complete. System is up to date.${RESET}\n"
+    echo -e "\n${GREEN}${BOLD}Upgrade complete. System is up to date.${RESET}"
+
+    # Reboot check
+    if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+        echo -e "\n${YELLOW}${BOLD}*** SYSTEM REBOOT REQUIRED ***${RESET}"
+        echo -e "${YELLOW}Core libraries (such as glibc) or kernel modules were updated.${RESET}\n"
+    else
+        echo ""
+    fi
 
     while read -r -t 0.1; do :; done
 
     read -r -p "Press [ENTER] to exit..."
 }
 
-# Buffer full script into RAM before execution
 main "$@"

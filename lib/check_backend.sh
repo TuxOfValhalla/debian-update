@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
-# debian-update check_backend.sh v0.5.0
+# debian-update check_backend.sh v0.6.3
 set -u
 
 STATUS_DIR="/var/cache/debian-update"
 STATUS_FILE="${STATUS_DIR}/status.json"
 mkdir -p "$STATUS_DIR"
 
-# 1. APT Updates & Held Back
 APT_UPDATES_RAW=""
 HELD_BACK_RAW=""
 
 if command -v apt-get >/dev/null 2>&1; then
     apt-get update -qq >/dev/null 2>&1 || true
-
-    # dist-upgrade simulerer full oppgradering slik at GCC/bibliotek-overganger i Sid fanges opp
     UPGRADES=$(apt-get -s dist-upgrade 2>/dev/null || true)
     while IFS= read -r line; do
         if [[ "${line:-}" =~ ^Inst\ ([^[:space:]]+) ]]; then
@@ -27,10 +24,8 @@ if command -v apt-get >/dev/null 2>&1; then
     done <<< "$HELD_RAW"
 fi
 
-# 2. Third-Party .deb Updates (deb-get)
 DEBGET_UPDATES_RAW=""
 DEBGET_INSTALLED="false"
-
 if command -v deb-get >/dev/null 2>&1; then
     DEBGET_INSTALLED="true"
     timeout 30s deb-get update >/dev/null 2>&1 || true
@@ -43,7 +38,6 @@ if command -v deb-get >/dev/null 2>&1; then
     done <<< "$DEB_OUT"
 fi
 
-# 3. Flatpak Updates
 FLATPAK_UPDATES_RAW=""
 if command -v flatpak >/dev/null 2>&1; then
     FP_OUT=$(flatpak remote-ls --updates --columns=ref 2>/dev/null || true)
@@ -52,10 +46,8 @@ if command -v flatpak >/dev/null 2>&1; then
     done <<< "$FP_OUT"
 fi
 
-# 4. AppImage Updates
 APPIMAGE_UPDATES_RAW=""
 APPIMAGE_INSTALLED="false"
-
 if command -v am >/dev/null 2>&1; then
     APPIMAGE_INSTALLED="true"
     AM_OUT=$(timeout 30s am list --upgradable 2>/dev/null || true)
@@ -92,13 +84,11 @@ export APT_UPDATES_RAW HELD_BACK_RAW DEBGET_UPDATES_RAW DEBGET_INSTALLED
 export FLATPAK_UPDATES_RAW APPIMAGE_UPDATES_RAW APPIMAGE_INSTALLED REBOOT_REQ SB_STATE STATUS_FILE
 
 python3 - << 'PYJSON'
-import os
-import json
+import os, json
 from datetime import datetime, timezone
 
 def to_list(env_key):
-    raw_str = os.environ.get(env_key, "").replace('\\n', '\n')
-    return [x.strip() for x in raw_str.strip().splitlines() if x.strip()]
+    return [x.strip() for x in os.environ.get(env_key, "").splitlines() if x.strip()]
 
 data = {
     "apt_updates": to_list("APT_UPDATES_RAW"),
@@ -117,6 +107,10 @@ data = {
 }
 
 status_file = os.environ.get("STATUS_FILE", "/var/cache/debian-update/status.json")
-with open(status_file, "w") as f:
+tmp_file = status_file + ".tmp"
+
+with open(tmp_file, "w") as f:
     json.dump(data, f, indent=2)
+
+os.replace(tmp_file, status_file)
 PYJSON
