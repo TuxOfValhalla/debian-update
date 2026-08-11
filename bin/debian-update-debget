@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# debian-update-debget v0.6.1
+# debian-update-debget v0.7.0
 set -euo pipefail
 
 trap 'echo -e "\nExiting."; exit 0' INT TERM
@@ -12,12 +12,14 @@ RESET="\033[0m"
 
 echo -e "${CYAN}${BOLD}Debian-Update: Third-Party .deb Package Manager (deb-get)${RESET}\n"
 
+# Verify deb-get binary
 if ! command -v deb-get >/dev/null 2>&1; then
     echo "deb-get is not installed on this system."
     read -r -p "Press [ENTER] to exit..." || true
     exit 1
 fi
 
+# Main action loop
 while true; do
     echo "Available actions:"
     echo " 1) List installed third-party .deb packages"

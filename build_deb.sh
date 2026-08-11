@@ -3,28 +3,18 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.6.7-1"
+VERSION="0.7.6-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
 VERSIONED_DEB="${DEV_DIR}/releases/debian-update_${VERSION}_all.deb"
-
 SRC_DIR="${DEV_DIR}"
 
 echo "==> Preparing package structure in /tmp for v${VERSION}..."
 rm -rf "${BUILD_ROOT}"
-mkdir -p "${BUILD_ROOT}/DEBIAN"
-mkdir -p "${BUILD_ROOT}/usr/bin"
-mkdir -p "${BUILD_ROOT}/usr/lib/debian-update"
-mkdir -p "${BUILD_ROOT}/usr/share/debian-update/lib"
-mkdir -p "${BUILD_ROOT}/usr/share/applications"
-mkdir -p "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps"
-mkdir -p "${BUILD_ROOT}/usr/share/doc/debian-update"
-mkdir -p "${BUILD_ROOT}/usr/lib/systemd/system"
-mkdir -p "${BUILD_ROOT}/etc/polkit-1/rules.d"
-mkdir -p "${DEV_DIR}/releases"
+mkdir -p "${BUILD_ROOT}"/{DEBIAN,usr/bin,usr/lib/debian-update,usr/share/debian-update/lib,usr/share/applications,usr/share/icons/hicolor/128x128/apps,usr/share/doc/debian-update,usr/lib/systemd/system,etc/polkit-1/rules.d} "${DEV_DIR}/releases"
 
-echo "==> Copying application files, icons, and license..."
+echo "==> Copying application files..."
 cp "${SRC_DIR}/bin/debian-update-cli" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/bin/debian-update-debget" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/lib/debian-update-tray" "${BUILD_ROOT}/usr/lib/debian-update/"
@@ -33,17 +23,9 @@ cp "${SRC_DIR}/desktop/debian-update-tray.desktop" "${BUILD_ROOT}/usr/share/appl
 cp "${SRC_DIR}/systemd/debian-update-check.service" "${BUILD_ROOT}/usr/lib/systemd/system/"
 cp "${SRC_DIR}/systemd/debian-update-check.timer" "${BUILD_ROOT}/usr/lib/systemd/system/"
 
-if [ -f "${SRC_DIR}/LICENSE" ]; then
-    cp "${SRC_DIR}/LICENSE" "${BUILD_ROOT}/usr/share/doc/debian-update/copyright"
-fi
-
-if [ -f "${SRC_DIR}/assets/debian-update-ok.png" ]; then
-    cp "${SRC_DIR}"/assets/debian-update-*.png "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps/"
-fi
-
-if [ -f "${SRC_DIR}/polkit/50-debian-update.rules" ]; then
-    cp "${SRC_DIR}/polkit/50-debian-update.rules" "${BUILD_ROOT}/etc/polkit-1/rules.d/"
-fi
+[ -f "${SRC_DIR}/LICENSE" ] && cp "${SRC_DIR}/LICENSE" "${BUILD_ROOT}/usr/share/doc/debian-update/copyright"
+[ -f "${SRC_DIR}/assets/debian-update-ok.png" ] && cp "${SRC_DIR}"/assets/debian-update-*.png "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps/"
+[ -f "${SRC_DIR}/polkit/50-debian-update.rules" ] && cp "${SRC_DIR}/polkit/50-debian-update.rules" "${BUILD_ROOT}/etc/polkit-1/rules.d/"
 
 echo "==> Writing DEBIAN/control..."
 cat << CONTROL_EOF > "${BUILD_ROOT}/DEBIAN/control"
@@ -126,4 +108,4 @@ dpkg-deb --root-owner-group --build "${BUILD_ROOT}" "${GENERIC_DEB}"
 cp "${GENERIC_DEB}" "${VERSIONED_DEB}"
 rm -rf "${BUILD_ROOT}"
 
-echo -e "\n\033[1;32mPackage built successfully: debian-update_${VERSION}_all.deb\033[0m"
+echo "Package built successfully: debian-update_${VERSION}_all.deb"

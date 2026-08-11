@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# debian-update-cli v0.6.7
+# debian-update-cli v0.7.5
 set -euo pipefail
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.6.7"
+CURRENT_VERSION="0.7.6"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"
@@ -26,26 +26,16 @@ check_self_update() {
     fi
 
     local latest_version deb_url
-    latest_version=$(python3 -c '
+    read -r latest_version deb_url <<< "$(python3 -c '
 import sys, json
 try:
     d = json.loads(sys.stdin.read())
-    print(d.get("tag_name", "").lstrip("v"))
+    ver = d.get("tag_name", "").lstrip("v")
+    url = next((a["browser_download_url"] for a in d.get("assets", []) if a.get("name", "").endswith(".deb")), "")
+    print(f"{ver} {url}")
 except Exception:
-    pass
-' <<< "$release_json")
-
-    deb_url=$(python3 -c '
-import sys, json
-try:
-    d = json.loads(sys.stdin.read())
-    for asset in d.get("assets", []):
-        if asset.get("name", "").endswith(".deb"):
-            print(asset.get("browser_download_url", ""))
-            break
-except Exception:
-    pass
-' <<< "$release_json")
+    print(" ")
+' <<< "$release_json")"
 
     if [ -n "$latest_version" ] && [ "$latest_version" != "$CURRENT_VERSION" ] && [ -n "$deb_url" ]; then
         echo -e "${GREEN}${BOLD}A new version of debian-update is available: v${latest_version} (Installed: v${CURRENT_VERSION})${RESET}"
@@ -72,12 +62,10 @@ except Exception:
 main() {
     echo -e "${CYAN}${BOLD}Debian-Update v${CURRENT_VERSION}${RESET}\n"
 
-    # Self-Update Check
     check_self_update "$@"
 
     STATUS_FILE="/var/cache/debian-update/status.json"
 
-    # Display Available Updates
     if [ -f "$STATUS_FILE" ]; then
         echo -e "${CYAN}${BOLD}Updates Available:${RESET}"
         python3 -c '
@@ -85,29 +73,21 @@ import json
 try:
     with open("'"$STATUS_FILE"'") as f:
         d = json.load(f)
-        sources = [
-            ("APT", d.get("apt_updates", [])),
-            ("Third-Party .deb", d.get("debget_updates", [])),
-            ("Flatpak", d.get("flatpak_updates", [])),
-            ("AppImages", d.get("appimage_updates", [])),
-            ("Held Back", d.get("apt_held_back", [])),
-        ]
-        has_updates = False
+        sources = [("APT", d.get("apt_updates", [])), ("Third-Party .deb", d.get("debget_updates", [])),
+                   ("Flatpak", d.get("flatpak_updates", [])), ("AppImages", d.get("appimage_updates", [])),
+                   ("Held Back", d.get("apt_held_back", []))]
+        has_up = False
         for name, pkgs in sources:
             if pkgs:
-                has_updates = True
+                has_up = True
                 print(f"\033[1;32m{name}:\033[0m")
-                for pkg in pkgs:
-                    print(f"  • {pkg}")
-        if not has_updates:
-            print("No pending updates found.")
-except Exception:
-    pass
+                for pkg in pkgs: print(f"  • {pkg}")
+        if not has_up: print("No pending updates found.")
+except Exception: pass
 '
         echo ""
     fi
 
-    # Prompt First Logic
     read -r -p "Continue with updates? [Y/n] " REPLY
     REPLY=${REPLY:-Y}
     if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
@@ -115,18 +95,15 @@ except Exception:
         exit 0
     fi
 
-    # Privilege Elevation
     echo -e "\n${CYAN}Validating administrator privileges...${RESET}"
     sudo -v
 
-    # APT Upgrade
     echo -e "\n${BLUE}${BOLD}Upgrading APT Packages${RESET}"
     if command -v apt-listbugs >/dev/null 2>&1; then
         echo -e "${YELLOW}Checking Debian Bug Tracking System (apt-listbugs)...${RESET}"
     fi
     sudo NEEDRESTART_MODE=a apt upgrade
 
-    # Third-Party .deb Upgrade (deb-get)
     echo -e "\n${BLUE}${BOLD}Upgrading Third-Party .deb Packages (deb-get)${RESET}"
     if command -v deb-get >/dev/null 2>&1; then
         echo -e "${GREEN}Checking & upgrading 3rd-party .deb packages...${RESET}"
@@ -136,7 +113,6 @@ except Exception:
         echo "deb-get is not installed. Skipping."
     fi
 
-    # Flatpak Upgrade
     echo -e "\n${BLUE}${BOLD}Upgrading Flatpak Packages${RESET}"
     if command -v flatpak >/dev/null 2>&1; then
         flatpak update
@@ -144,28 +120,21 @@ except Exception:
         echo "Flatpak is not installed. Skipping."
     fi
 
-    # AppImage Upgrade
     echo -e "\n${BLUE}${BOLD}Upgrading AppImages${RESET}"
     if command -v am >/dev/null 2>&1; then
         echo -e "${GREEN}Updating AppImages via AM (AppImage Manager)...${RESET}"
         timeout 60s am update || echo -e "${YELLOW}AM update timed out (60s guard) or finished with warnings.${RESET}"
     elif command -v appimageupdatetool >/dev/null 2>&1; then
         echo -e "${GREEN}Updating AppImages via appimageupdatetool...${RESET}"
-        APP_DIRS=("$HOME/Applications" "$HOME/.local/bin" "/opt/appimages")
-        for app_dir in "${APP_DIRS[@]}"; do
-            if [ -d "$app_dir" ]; then
-                for img in "$app_dir"/*.AppImage "$app_dir"/*.appimage; do
-                    [ -f "$img" ] || continue
-                    echo "Checking $img..."
-                    timeout 15s appimageupdatetool -overwrite "$img" || true
-                done
-            fi
+        find /home/* /root /opt/appimages -maxdepth 3 \( -name "*.AppImage" -o -name "*.appimage" \) 2>/dev/null | while read -r img; do
+            [ -f "$img" ] || continue
+            echo "Checking $img..."
+            timeout 15s appimageupdatetool -overwrite "$img" || true
         done
     else
         echo "No AppImage management tools (AM / appimageupdatetool) detected. Skipping."
     fi
 
-    # Interactive System Cleanup
     echo -e "\n${BLUE}${BOLD}System Cleanup & Service Inspection${RESET}"
     read -r -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " REPLY
     if [[ "$REPLY" =~ ^[Yy]$ ]]; then
@@ -178,19 +147,16 @@ except Exception:
         echo -e "${YELLOW}Skipping cleanup step.${RESET}"
     fi
 
-    # Service Inspection via needrestart
     if command -v needrestart >/dev/null 2>&1; then
         echo -e "\n${BOLD}Service Restart Inspection (needrestart)${RESET}"
         sudo needrestart -b || true
     fi
 
-    # Trigger background status refresh asynchronously (--no-block)
     echo -e "\n${CYAN}Refreshing status cache...${RESET}"
     sudo systemctl start --no-block debian-update-check.service || true
 
     echo -e "\n${GREEN}${BOLD}Upgrade complete. System is up to date.${RESET}"
 
-    # Reboot check
     if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
         echo -e "\n${YELLOW}${BOLD}*** SYSTEM REBOOT REQUIRED ***${RESET}"
         echo -e "${YELLOW}Core libraries (such as glibc) or kernel modules were updated.${RESET}\n"

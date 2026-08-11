@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# debian-update-tray v0.7.6
 import sys
 import json
 import os
@@ -6,7 +7,6 @@ import subprocess
 import time
 import re
 import shutil
-from datetime import datetime, timezone
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QFileSystemWatcher, QTimer
@@ -17,19 +17,12 @@ ICON_PENDING = "/usr/share/icons/hicolor/128x128/apps/debian-update-pending.png"
 ICON_CHECKING = "/usr/share/icons/hicolor/128x128/apps/debian-update-checking.png"
 
 def get_time_since_last_check(data):
-    if not data or "last_check" not in data:
+    if not data or "last_check_ts" not in data:
         return "Unknown"
     try:
-        ts_str = data["last_check"]
-        if ts_str.endswith("Z"):
-            ts_str = ts_str[:-1] + "+00:00"
-        last_dt = datetime.fromisoformat(ts_str)
-        now = datetime.now(timezone.utc)
-        diff = (now - last_dt).total_seconds()
-
-        if diff < 0 or diff < 60:
+        diff = max(0, time.time() - float(data["last_check_ts"]))
+        if diff < 60:
             return "Just now"
-
         mins = int(diff // 60)
         hours = mins // 60
         days = hours // 24
@@ -45,34 +38,28 @@ def get_time_since_last_check(data):
 
 def get_next_check_in():
     try:
-        out_status = subprocess.check_output(
+        out = subprocess.check_output(
             ["systemctl", "status", "debian-update-check.timer"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=3
+            stderr=subprocess.DEVNULL, text=True, timeout=3
         )
-        for line in out_status.splitlines():
+        for line in out.splitlines():
             if "Trigger:" in line and "left" in line:
-                parts = line.split(";")
-                if len(parts) >= 2:
-                    left_part = parts[1].strip()
-                    left_str = re.sub(r'\s+left.*$', '', left_part, flags=re.IGNORECASE).strip()
-                    cleaned = re.sub(r'(\d+)\s*min', r'\1m', left_str)
+                match = re.search(r';\s*(.*?)\s*left', line, re.IGNORECASE)
+                if match:
+                    raw = match.group(1).strip()
+                    cleaned = re.sub(r'(\d+)\s*min', r'\1m', raw)
                     cleaned = re.sub(r'(\d+)\s*hours?', r'\1h', cleaned)
                     cleaned = re.sub(r'(\d+)\s*days?', r'\1d', cleaned)
-                    cleaned = re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
-                    return cleaned
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
+                    return re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
+    except Exception:
         pass
 
     try:
-        out_timers = subprocess.check_output(
+        out = subprocess.check_output(
             ["systemctl", "list-timers", "--all"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=3
+            stderr=subprocess.DEVNULL, text=True, timeout=3
         )
-        for line in out_timers.splitlines():
+        for line in out.splitlines():
             if "debian-update-check.timer" in line:
                 match = re.search(r'((?:\d+\w*\s*)+)\s+left', line, re.IGNORECASE)
                 if match:
@@ -80,9 +67,8 @@ def get_next_check_in():
                     cleaned = re.sub(r'(\d+)\s*min', r'\1m', raw)
                     cleaned = re.sub(r'(\d+)\s*hours?', r'\1h', cleaned)
                     cleaned = re.sub(r'(\d+)\s*days?', r'\1d', cleaned)
-                    cleaned = re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
-                    return cleaned
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, Exception):
+                    return re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
+    except Exception:
         pass
 
     return "Unknown"
@@ -95,6 +81,7 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         self.menu = QMenu()
         self.setContextMenu(self.menu)
+        self.menu.aboutToShow.connect(self.update_ui)
 
         self.activated.connect(self.on_activated)
 
@@ -103,15 +90,12 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         self.watcher = QFileSystemWatcher()
         self.watcher.addPath(cache_dir)
-        if os.path.exists(STATUS_FILE):
-            self.watcher.addPath(STATUS_FILE)
-
-        self.watcher.fileChanged.connect(self.update_ui)
         self.watcher.directoryChanged.connect(self.update_ui)
+        self.watcher.fileChanged.connect(self.update_ui)
 
         self.poll_timer = QTimer()
         self.poll_timer.timeout.connect(self.update_ui)
-        self.poll_timer.start(15000)
+        self.poll_timer.start(10000)
 
         self.update_ui()
 
@@ -122,21 +106,14 @@ class DebianUpdateTray(QSystemTrayIcon):
     def load_status(self):
         if not os.path.exists(STATUS_FILE):
             return None
-        for _ in range(2):
-            try:
-                with open(STATUS_FILE, 'r') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, OSError):
-                time.sleep(0.05)
-        return None
+        try:
+            with open(STATUS_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return None
 
     def update_ui(self):
-        if os.path.exists(STATUS_FILE) and STATUS_FILE not in self.watcher.files():
-            self.watcher.addPath(STATUS_FILE)
-
         data = self.load_status()
-        if self.menu.isVisible():
-            return
         self.menu.clear()
 
         if not data:
@@ -160,77 +137,45 @@ class DebianUpdateTray(QSystemTrayIcon):
                 self.setIcon(QIcon(ICON_OK))
 
             if total_updates > 0 and total_updates != self.last_notified_count:
-                self.showMessage(
-                    "Debian Update",
-                    f"{total_updates} updates available",
-                    self.icon(),
-                    5000
-                )
+                self.showMessage("Debian Update", f"{total_updates} updates available", self.icon(), 5000)
                 self.last_notified_count = total_updates
             elif total_updates == 0:
                 self.last_notified_count = 0
 
-            # Dynamic tooltip design
             if total_updates == 0:
                 tooltip = "System is up to date"
             else:
                 tooltip = f"Updates available: {total_updates}"
-                if len(apt_list) > 0:
-                    tooltip += f"\n• APT: {len(apt_list)}"
-                if len(debget_list) > 0:
-                    tooltip += f"\n• Third-Party .deb: {len(debget_list)}"
-                if len(flatpak_list) > 0:
-                    tooltip += f"\n• Flatpak: {len(flatpak_list)}"
-                if len(appimage_list) > 0:
-                    tooltip += f"\n• AppImages: {len(appimage_list)}"
+                if apt_list: tooltip += f"\n• APT: {len(apt_list)}"
+                if debget_list: tooltip += f"\n• Third-Party .deb: {len(debget_list)}"
+                if flatpak_list: tooltip += f"\n• Flatpak: {len(flatpak_list)}"
+                if appimage_list: tooltip += f"\n• AppImages: {len(appimage_list)}"
 
-            if len(held_list) > 0:
-                tooltip += f"\n• Held Back: {len(held_list)}"
-            if reboot_req:
-                tooltip += "\nSystem Reboot Recommended!"
-            if sb_warnings:
-                tooltip += f"\nWarnings: {len(sb_warnings)}"
+            if held_list: tooltip += f"\n• Held Back: {len(held_list)}"
+            if reboot_req: tooltip += "\nSystem Reboot Recommended!"
+            if sb_warnings: tooltip += f"\nWarnings: {len(sb_warnings)}"
 
             self.setToolTip(tooltip)
 
             pending_menu = self.menu.addMenu(f"Updates available ({total_updates})")
 
-            if len(apt_list) > 0:
-                pending_menu.addSection(f"APT Packages ({len(apt_list)})")
-                for pkg in apt_list:
-                    action = QAction(f"  {pkg}", self)
-                    action.setEnabled(False)
-                    pending_menu.addAction(action)
+            for title, pkgs in [("APT Packages", apt_list), ("Third-Party .deb", debget_list),
+                                ("Flatpak Applications", flatpak_list), ("AppImages", appimage_list)]:
+                if pkgs:
+                    pending_menu.addSection(f"{title} ({len(pkgs)})")
+                    for pkg in pkgs:
+                        action = QAction(f"  {pkg}", self)
+                        action.setEnabled(False)
+                        pending_menu.addAction(action)
 
-            if len(debget_list) > 0:
-                pending_menu.addSection(f"Third-Party .deb ({len(debget_list)})")
-                for pkg in debget_list:
-                    action = QAction(f"  {pkg}", self)
-                    action.setEnabled(False)
-                    pending_menu.addAction(action)
-
-            if len(flatpak_list) > 0:
-                pending_menu.addSection(f"Flatpak Applications ({len(flatpak_list)})")
-                for app_id in flatpak_list:
-                    action = QAction(f"  {app_id}", self)
-                    action.setEnabled(False)
-                    pending_menu.addAction(action)
-
-            if len(appimage_list) > 0:
-                pending_menu.addSection(f"AppImages ({len(appimage_list)})")
-                for img in appimage_list:
-                    action = QAction(f"  {img}", self)
-                    action.setEnabled(False)
-                    pending_menu.addAction(action)
-
-            if len(held_list) > 0:
+            if held_list:
                 pending_menu.addSection("Held Back (Manual Intervention)")
                 for pkg in held_list:
                     action = QAction(f"  {pkg}", self)
                     action.setEnabled(False)
                     pending_menu.addAction(action)
 
-            if total_updates == 0 and len(held_list) == 0:
+            if total_updates == 0 and not held_list:
                 no_up = QAction("All packages are up to date", self)
                 no_up.setEnabled(False)
                 pending_menu.addAction(no_up)
@@ -286,45 +231,34 @@ class DebianUpdateTray(QSystemTrayIcon):
             pass
 
     def launch_debget(self):
-        cmd = ["/usr/bin/debian-update-debget"]
-        self.launch_in_terminal(cmd, "Debian-Update: Third-Party .deb Manager")
+        self.launch_in_terminal(["/usr/bin/debian-update-debget"], "Debian-Update: Third-Party .deb Manager")
 
     def launch_upgrade(self):
-        cmd = ["/usr/bin/debian-update-cli"]
-        self.launch_in_terminal(cmd, "Debian-Update")
+        self.launch_in_terminal(["/usr/bin/debian-update-cli"], "Debian-Update")
 
     def launch_in_terminal(self, cmd, title):
-        env_term = os.environ.get("TERMINAL")
-        if env_term and shutil.which(env_term):
+        term = os.environ.get("TERMINAL")
+        if term and shutil.which(term):
             try:
-                subprocess.Popen([env_term, "-e"] + cmd)
+                subprocess.Popen([term, "-e"] + cmd)
                 return
             except Exception:
                 pass
 
-        candidates = [
-            ("konsole", ["konsole", "-p", f"tabtitle={title}", "--title", title, "-e"] + cmd),
-            ("gnome-terminal", ["gnome-terminal", f"--title={title}", "--"] + cmd),
-            ("ptyxis", ["ptyxis", f"--title={title}", "--"] + cmd),
-            ("xfce4-terminal", ["xfce4-terminal", f"--title={title}", "-e"] + cmd),
-            ("mate-terminal", ["mate-terminal", f"--title={title}", "--"] + cmd),
-            ("tilix", ["tilix", "-t", title, "-e"] + cmd),
-            ("alacritty", ["alacritty", "-t", title, "-e"] + cmd),
-            ("kitty", ["kitty", "-T", title] + cmd),
-            ("foot", ["foot", "-T", title] + cmd),
-            ("x-terminal-emulator", ["x-terminal-emulator", "-e"] + cmd),
-            ("xterm", ["xterm", "-title", title, "-e"] + cmd)
-        ]
+        if shutil.which("x-terminal-emulator"):
+            try:
+                subprocess.Popen(["x-terminal-emulator", "-e"] + cmd)
+                return
+            except Exception:
+                pass
 
-        for term_bin, term_cmd in candidates:
-            if shutil.which(term_bin):
+        for fallback in ["konsole", "gnome-terminal", "ptyxis", "xfce4-terminal", "xterm"]:
+            if shutil.which(fallback):
                 try:
-                    subprocess.Popen(term_cmd)
+                    subprocess.Popen([fallback, "-e"] + cmd)
                     return
                 except Exception:
                     continue
-
-        subprocess.Popen(["x-terminal-emulator", "-e"] + cmd)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
