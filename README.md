@@ -35,7 +35,8 @@ Use of this software should be safe, as it is rigorously tested by me, but as al
   * **Third-Party .deb Packages (Optional):** Integrated management via deb-get (*100% optional*).
   * **Flatpaks:** Checks system and user Flatpak applications and runtimes.
   * **AppImages (Optional):** Scans and updates AppImages using AM or appimageupdatetool (*100% optional*).
-
+  * **Snaps (Optional):** Scans and updates snap packages (*100% optional*).
+  
 * **Self-Updating Mechanism:**
   * Checks GitHub Releases prior to running system updates.
   * Safely upgrades its own .deb package in-place using RAM buffering and process re-execution without interrupting execution.

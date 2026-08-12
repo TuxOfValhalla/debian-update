@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.7.6-1"
+VERSION="0.8.17-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -37,10 +36,10 @@ Architecture: all
 Maintainer: tux <tux@localhost>
 Depends: python3, python3-pyqt5, python3-pyqt5.qtsvg, systemd, needrestart
 Recommends: flatpak, deb-get, apt-listbugs, mokutil, sbsigntool
-Suggests: am, appimageupdatetool
+Suggests: snapd, am, appimageupdatetool
 Description: System tray indicator and CLI upgrade suite for Debian Testing/Sid
  A lightweight system tray applet and CLI suite for Debian.
- Periodically checks APT, 3rd-party .deb (deb-get), Flatpak & AppImages via systemd,
+ Periodically checks APT, Flatpak, Snap, AppImages & 3rd-party .deb (deb-get) via systemd,
  verifies Secure Boot and kernel/NVIDIA signatures, safely upgrades packages,
  and cleans orphan dependencies.
 CONTROL_EOF
