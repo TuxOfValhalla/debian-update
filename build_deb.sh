@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
+# --- [ build_deb.sh: Debian Package Builder ] ---
+
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.10.1-1"
+VERSION="0.11.1-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -13,6 +15,7 @@ echo "==> Preparing package structure in /tmp for v${VERSION}..."
 rm -rf "${BUILD_ROOT}"
 mkdir -p "${BUILD_ROOT}"/{DEBIAN,usr/bin,usr/lib/debian-update,usr/share/debian-update/lib,usr/share/debian-update/locales,usr/share/applications,usr/share/icons/hicolor/128x128/apps,usr/share/doc/debian-update,usr/lib/systemd/system,etc/polkit-1/rules.d} "${DEV_DIR}/releases"
 
+# --- [ File Operations ] ---
 echo "==> Copying application files..."
 cp "${SRC_DIR}/bin/debian-update-cli" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/bin/debian-update-debget" "${BUILD_ROOT}/usr/bin/"
@@ -28,6 +31,7 @@ cp "${SRC_DIR}/systemd/debian-update-check.timer" "${BUILD_ROOT}/usr/lib/systemd
 [ -f "${SRC_DIR}/assets/debian-update-ok.png" ] && cp "${SRC_DIR}"/assets/debian-update-*.png "${BUILD_ROOT}/usr/share/icons/hicolor/128x128/apps/"
 [ -f "${SRC_DIR}/polkit/50-debian-update.rules" ] && cp "${SRC_DIR}/polkit/50-debian-update.rules" "${BUILD_ROOT}/etc/polkit-1/rules.d/"
 
+# --- [ DEBIAN Control Files ] ---
 echo "==> Writing DEBIAN/control..."
 cat << CONTROL_EOF > "${BUILD_ROOT}/DEBIAN/control"
 Package: debian-update
@@ -93,6 +97,7 @@ exit 0
 PRERM_EOF
 chmod 755 "${BUILD_ROOT}/DEBIAN/prerm"
 
+# --- [ Permissions & Compilation ] ---
 echo "==> Setting permissions..."
 find "${BUILD_ROOT}" -type d -exec chmod 755 {} \;
 find "${BUILD_ROOT}" -type f -exec chmod 644 {} \;

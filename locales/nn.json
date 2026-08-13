@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "Vil du installere desse trygge pakkane no? [j/N] ",
   "NVIDIA_SYNC_START": "NVIDIA-drivaroppdatering oppdaga. Synkroniserer Flatpak GL-runtimes...",
   "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-runtimes vart velukka synkronisert.",
-  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering mislukkast eller er fråkopla. Handling krevst i tray."
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering mislukkast eller er fråkopla. Handling krevst i tray.",
+  "PROMPT_UPGRADE_DEBGET": "Vil du oppgradere tredjeparts .deb-pakkar (deb-get)? [j/N] "
 }

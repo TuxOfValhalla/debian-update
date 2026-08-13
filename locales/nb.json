@@ -88,8 +88,9 @@
   "DEBGET_INVALID_OPTION": "Ugyldig valg. Vennligst prøv igjen.",
   "HELD_SKIPPED_RISK": "Hopper over tilbakeholdte pakker (forhindrer at systemet brekker)",
   "HELD_SAFE_OFFER": "Følgende tilbakeholdte pakker kan trygt oppgraderes: {packages}",
-  "PROMPT_INSTALL_SAFE_HELD": "Vil du installere disse trygge pakkene nå? [j/N] ",
+  "PROMPT_INSTALL_SAFE_HELD": "Vil du installere disse trygge pakkene nå? [J/n] ",
   "NVIDIA_SYNC_START": "NVIDIA-driveroppdatering oppdaget. Synkroniserer Flatpak GL-runtimes...",
   "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-runtimes ble vellykket synkronisert.",
-  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering mislyktes eller er frakoblet. Handling kreves i tray."
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering mislyktes eller er frakoblet. Handling kreves i tray.",
+  "PROMPT_UPGRADE_DEBGET": "Vil du oppgradere tredjeparts .deb-pakker (deb-get)? [j/N] "
 }

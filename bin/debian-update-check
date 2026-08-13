@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# debian-update-check: Background status checker for debian-update
-# ==============================================================================
+# --- [ debian-update-check: Background status checker ] ---
 
 set -euo pipefail
 
@@ -9,9 +7,7 @@ STATUS_FILE="/var/cache/debian-update/status.json"
 NVIDIA_STATE_FILE="/var/cache/debian-update/nvidia_state.json"
 mkdir -p "$(dirname "$STATUS_FILE")"
 
-# ------------------------------------------------------------------------------
-# 1. CPU-Light NVIDIA Hardware Check & Flatpak GL Match Verification
-# ------------------------------------------------------------------------------
+# --- [ NVIDIA Hardware Check & Flatpak GL Match Verification ] ---
 NVIDIA_ACTIVE_VER=""
 NVIDIA_MISMATCH=false
 
@@ -22,7 +18,6 @@ elif [ -f "/proc/driver/nvidia/version" ]; then
 fi
 
 if [ -n "$NVIDIA_ACTIVE_VER" ] && command -v flatpak &>/dev/null; then
-    # Verify if matching Flatpak GL runtime is already installed on the system
     MATCH_FOUND=$(python3 -c "
 import subprocess, sys
 
@@ -34,20 +29,18 @@ try:
     for line in out.splitlines():
         if 'GL.nvidia' in line or 'nvidia' in line.lower():
             if active_ver in line or ver_dash in line:
-                sys.exit(0) # Found matching runtime
+                sys.exit(0)
 except Exception:
     pass
 
-sys.exit(1) # Not found
+sys.exit(1)
 " && echo "true" || echo "false")
 
     if [ "$MATCH_FOUND" = "true" ]; then
-        # Runtime is already present and matching - state is perfectly synced
         echo "[NVIDIA-Sync] Matching Flatpak GL runtime for '$NVIDIA_ACTIVE_VER' is already installed."
         python3 -c "import json, os; os.makedirs(os.path.dirname('$NVIDIA_STATE_FILE'), exist_ok=True); json.dump({'last_synced_version': '$NVIDIA_ACTIVE_VER'}, open('$NVIDIA_STATE_FILE', 'w'))" 2>/dev/null || true
         NVIDIA_MISMATCH=false
     else
-        # Runtime is missing - attempt silent sync
         echo "[NVIDIA-Sync] Missing Flatpak GL runtime for '$NVIDIA_ACTIVE_VER'. Attempting silent sync..."
         if flatpak update -y --non-interactive &>/dev/null; then
             echo "[NVIDIA-Sync] Silent sync completed."
@@ -60,9 +53,7 @@ sys.exit(1) # Not found
     fi
 fi
 
-# ------------------------------------------------------------------------------
-# 2. Package Status Checks (APT, Flatpak, Snap, AppImage, deb-get)
-# ------------------------------------------------------------------------------
+# --- [ Package Status Checks ] ---
 export APT_UPDATES_RAW=$(apt-get -s upgrade 2>/dev/null | grep -E "^Inst " | awk '{print $2}' | jq -R . | jq -s . 2>/dev/null || echo "[]")
 export APT_HELD_RAW=$(apt-mark showhold 2>/dev/null | jq -R . | jq -s . 2>/dev/null || echo "[]")
 
@@ -85,9 +76,7 @@ export REBOOT_REQ_RAW="false"
 export NVIDIA_MISMATCH_RAW="$NVIDIA_MISMATCH"
 export NVIDIA_VER_RAW="$NVIDIA_ACTIVE_VER"
 
-# ------------------------------------------------------------------------------
-# 3. Safe Python Writer using Environment Variables
-# ------------------------------------------------------------------------------
+# --- [ Status Cache Serialization ] ---
 python3 - << 'PYEOF'
 import os
 import json

@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "¿Desea instalar estos paquetes seguros ahora? [s/N] ",
   "NVIDIA_SYNC_START": "Actualización de controlador NVIDIA detectada. Sincronizando runtimes Flatpak GL...",
   "NVIDIA_SYNC_OK": "Runtimes NVIDIA Flatpak GL sincronizados con éxito.",
-  "NVIDIA_SYNC_FAIL": "Sincronización de NVIDIA Flatpak GL fallida o sin conexión. Acción requerida en la bandeja."
+  "NVIDIA_SYNC_FAIL": "Sincronización de NVIDIA Flatpak GL fallida o sin conexión. Acción requerida en la bandeja.",
+  "PROMPT_UPGRADE_DEBGET": "¿Desea actualizar los paquetes .deb de terceros (deb-get)? [s/N] "
 }

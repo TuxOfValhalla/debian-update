@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+# --- [ debian-update-cli: Main Upgrade Terminal Suite ] ---
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.10.1"
+CURRENT_VERSION="0.11.1"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"
@@ -27,6 +28,7 @@ cleanup_on_exit() {
 }
 trap cleanup_on_exit EXIT
 
+# --- [ Self-Update Checker ] ---
 check_self_update() {
     echo -e "${CYAN}$(_ CHECKING_GITHUB_UPDATES)${RESET}"
     
@@ -72,6 +74,7 @@ except Exception:
     fi
 }
 
+# --- [ Held-Back Package Inspection ] ---
 check_held_back_packages() {
     local held_pkgs=()
 
@@ -83,7 +86,7 @@ check_held_back_packages() {
         if [ -n "$pkg" ] && [[ ! " ${held_pkgs[*]:-} " =~ " ${pkg} " ]]; then
             held_pkgs+=("$pkg")
         fi
-    done < <(apt-get -s upgrade 2>/dev/null | grep -E "^  [a-zA-Z0-9]" | grep -v -E "^  (Inst|Conf)" | tr -s ' ' '\n' | grep -v '^$' || true)
+    done < <(apt-get -s upgrade 2>/dev/null | awk '/The following packages have been kept back:/{flag=1; next} /^[A-Z]/{flag=0} flag {print}' | tr -s ' ' '\n' | grep -v '^$' || true)
 
     if [ ${#held_pkgs[@]} -eq 0 ]; then
         return 0
@@ -108,13 +111,15 @@ check_held_back_packages() {
         local pkgs_str
         pkgs_str=$(IFS=", "; echo "${held_pkgs[*]}")
         echo -e "${GREEN}$(_ HELD_SAFE_OFFER packages="$pkgs_str")${RESET}"
-        read -r -p "$(_ PROMPT_INSTALL_SAFE_HELD)" REPLY || REPLY="N"
+        read -r -p "$(_ PROMPT_INSTALL_SAFE_HELD)" REPLY || REPLY="Y"
+        REPLY=${REPLY:-Y}
         if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
             sudo NEEDRESTART_MODE=a apt-get install -y "${held_pkgs[@]}"
         fi
     fi
 }
 
+# --- [ Main Upgrade Routine ] ---
 main() {
     echo -e "${CYAN}${BOLD}$(_ CLI_TITLE version="$CURRENT_VERSION")${RESET}\n"
 
@@ -215,7 +220,22 @@ if os.path.exists(status_file):
         echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_DEBGET)${RESET}"
         echo -e "${GREEN}$(_ REFRESHING_DEBGET)${RESET}"
         sudo deb-get update >/dev/null 2>&1 || true
-        timeout 60s sudo NEEDRESTART_MODE=a deb-get upgrade || echo -e "${YELLOW}$(_ DEBGET_TIMEOUT)${RESET}"
+
+        local debget_pkgs=()
+        while read -r pkg; do
+            [ -n "$pkg" ] && debget_pkgs+=("$pkg")
+        done < <(deb-get list 2>/dev/null | grep -i "upgradeable" | awk '{print $1}' || true)
+
+        if [ ${#debget_pkgs[@]} -gt 0 ]; then
+            local pkgs_str=$(IFS=", "; echo "${debget_pkgs[*]}")
+            echo -e "${GREEN}$(_ CAT_DEBGET): ${pkgs_str}${RESET}"
+            read -r -p "$(_ PROMPT_UPGRADE_DEBGET)" REPLY || REPLY="N"
+            if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+                timeout 60s sudo NEEDRESTART_MODE=a deb-get install "${debget_pkgs[@]}" || echo -e "${YELLOW}$(_ DEBGET_TIMEOUT)${RESET}"
+            fi
+        else
+            echo -e "${GREEN}$(_ NO_PENDING_UPDATES)${RESET}"
+        fi
     fi
 
     # Maintenance & Cleanup

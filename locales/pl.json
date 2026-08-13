@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "Czy chcesz teraz zainstalować te bezpieczne pakiety? [t/N] ",
   "NVIDIA_SYNC_START": "Wykryto aktualizację sterownika NVIDIA. Synchronizacja środowisk uruchomieniowych Flatpak GL...",
   "NVIDIA_SYNC_OK": "Pomyślnie zsynchronizowano środowiska uruchomieniowe NVIDIA Flatpak GL.",
-  "NVIDIA_SYNC_FAIL": "Synchronizacja NVIDIA Flatpak GL nie powiodła się lub brak połączenia. Wymagane działanie w zasobniku."
+  "NVIDIA_SYNC_FAIL": "Synchronizacja NVIDIA Flatpak GL nie powiodła się lub brak połączenia. Wymagane działanie w zasobniku.",
+  "PROMPT_UPGRADE_DEBGET": "Czy chcesz zaktualizować zewnętrzne pakiety .deb (deb-get)? [t/N] "
 }

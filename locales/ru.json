@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "Установить эти безопасные пакеты сейчас? [д/Н] ",
   "NVIDIA_SYNC_START": "Обнаружено обновление драйвера NVIDIA. Синхронизация среды выполнения Flatpak GL...",
   "NVIDIA_SYNC_OK": "Среда выполнения NVIDIA Flatpak GL успешно синхронизирована.",
-  "NVIDIA_SYNC_FAIL": "Сбой синхронизации NVIDIA Flatpak GL или нет сети. Требуется действие в трее."
+  "NVIDIA_SYNC_FAIL": "Сбой синхронизации NVIDIA Flatpak GL или нет сети. Требуется действие в трее.",
+  "PROMPT_UPGRADE_DEBGET": "Обновить сторонние .deb пакеты (deb-get)? [д/Н] "
 }

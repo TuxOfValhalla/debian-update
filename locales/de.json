@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "Möchten Sie diese sicheren Pakete jetzt installieren? [j/N] ",
   "NVIDIA_SYNC_START": "NVIDIA-Treiberupdate erkannt. Synchronisiere Flatpak GL-Runtimes...",
   "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-Runtimes erfolgreich synchronisiert.",
-  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-Synchronisierung fehlgeschlagen oder offline. Aktion im Tray erforderlich."
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-Synchronisierung fehlgeschlagen oder offline. Aktion im Tray erforderlich.",
+  "PROMPT_UPGRADE_DEBGET": "Möchten Sie .deb-Pakete von Drittanbietern (deb-get) aktualisieren? [j/N] "
 }

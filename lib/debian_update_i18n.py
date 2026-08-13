@@ -1,3 +1,5 @@
+# --- [ debian_update_i18n: Localization Engine ] ---
+
 import os
 import json
 import locale
@@ -11,6 +13,7 @@ if not os.path.exists(LOCALES_DIR):
 
 CONFIG_FILE = os.path.expanduser("~/.config/debian-update/config.json")
 
+# --- [ I18nEngine Class ] ---
 class I18nEngine:
     def __init__(self, override_lang=None):
         self.translations = {}

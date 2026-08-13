@@ -91,5 +91,6 @@
   "PROMPT_INSTALL_SAFE_HELD": "Hálidat go asahit dáid sihkaris páhkaid dál? [j/N] ",
   "NVIDIA_SYNC_START": "NVIDIA-vuoddiođasmahttin dárkkistuvvon. Ođasmahttimin Flatpak GL...",
   "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL lea lihkosmuvvan ođasmahttojuvvon.",
-  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL ođasmahttin feile. Dárkkis stivranbarffu."
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL ođasmahttin feile. Dárkkis stivranbarffu.",
+  "PROMPT_UPGRADE_DEBGET": "Do you want to upgrade third-party .deb packages (deb-get)? [y/N] "
 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# --- [ check_backend.sh: Parallel Background Worker ] ---
+
 set -euo pipefail
 
 STATUS_DIR="/var/cache/debian-update"
@@ -12,9 +14,7 @@ echo "false" > "$TMP_DIR/snap_installed"
 echo "false" > "$TMP_DIR/debget_installed"
 echo "false" > "$TMP_DIR/appimage_installed"
 
-# ------------------------------------------------------------------------------
-# PARALLEL BACKEND CHECK SUBSHELLS
-# ------------------------------------------------------------------------------
+# --- [ Parallel Package Managers Check ] ---
 
 # 1. APT
 (
@@ -67,9 +67,7 @@ echo "false" > "$TMP_DIR/appimage_installed"
 
 wait
 
-# ------------------------------------------------------------------------------
-# ENVIRONMENT & STATUS JSON EXPORT
-# ------------------------------------------------------------------------------
+# --- [ Status Cache Export ] ---
 
 REBOOT_REQ="false"
 [ -f /var/run/reboot-required ] || [ -f /run/reboot-required ] && REBOOT_REQ="true"
