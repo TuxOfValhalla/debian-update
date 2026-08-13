@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Deutsch",
+  "LANGUAGE_SELECTION": "Sprache",
+  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)",
   "UPDATES_AVAILABLE": "Updates verfügbar: {count}",
   "SYSTEM_UP_TO_DATE": "System ist auf dem neuesten Stand",
   "DEBIAN_UPDATE_TITLE": "Debian Aktualisierung",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Aktualisiere deb-get Index...",
   "DEBGET_EXITING": "Beenden.",
   "DEBGET_INVALID_OPTION": "Ungültige Option. Bitte erneut versuchen.",
-  "LANG_NAME": "Deutsch",
-  "LANGUAGE_SELECTION": "Sprache",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Zurückgehaltene Pakete übersprungen (verhindert Systembeschädigung)",
+  "HELD_SAFE_OFFER": "Folgende zurückgehaltene Pakete können sicher aktualisiert werden: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Möchten Sie diese sicheren Pakete jetzt installieren? [j/N] ",
+  "NVIDIA_SYNC_START": "NVIDIA-Treiberupdate erkannt. Synchronisiere Flatpak GL-Runtimes...",
+  "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-Runtimes erfolgreich synchronisiert.",
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-Synchronisierung fehlgeschlagen oder offline. Aktion im Tray erforderlich."
 }

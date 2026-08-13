@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Español",
+  "LANGUAGE_SELECTION": "Idioma",
+  "SYSTEM_DEFAULT_LANG": "Predeterminado del sistema (Auto)",
   "UPDATES_AVAILABLE": "Actualizaciones disponibles: {count}",
   "SYSTEM_UP_TO_DATE": "El sistema está actualizado",
   "DEBIAN_UPDATE_TITLE": "Actualización de Debian",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Actualizando índice...",
   "DEBGET_EXITING": "Saliendo.",
   "DEBGET_INVALID_OPTION": "Opción no válida.",
-  "LANG_NAME": "Español",
-  "LANGUAGE_SELECTION": "Idioma",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Omitiendo paquetes retenidos (previene daños en el sistema)",
+  "HELD_SAFE_OFFER": "Los siguientes paquetes retenidos son seguros para actualizar: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "¿Desea instalar estos paquetes seguros ahora? [s/N] ",
+  "NVIDIA_SYNC_START": "Actualización de controlador NVIDIA detectada. Sincronizando runtimes Flatpak GL...",
+  "NVIDIA_SYNC_OK": "Runtimes NVIDIA Flatpak GL sincronizados con éxito.",
+  "NVIDIA_SYNC_FAIL": "Sincronización de NVIDIA Flatpak GL fallida o sin conexión. Acción requerida en la bandeja."
 }

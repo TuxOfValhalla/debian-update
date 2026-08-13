@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.9.4-1"
+VERSION="0.10.1-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"

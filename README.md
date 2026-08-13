@@ -49,7 +49,7 @@ Use of this software should be safe, as it is rigorously tested by me, but as al
 
 * **Multi language support:**
   * **Northern languages:** Norwegian (bokmål, nynorsk) Northern Sami, Swedish, Danish, Icelandic, Finnish and Danish are all supported.
-  * **European Languages and Russian:** German, French, Spanish, Portuguese, Dutch and Russian.
+  * **European Languages and Russian:** German, French, Spanish, Portuguese, Dutch, Polish, Italian and Russian.
   * **Eastern Asian Languages and Hindi:** Chinese, Japanese, Korean and Hindi.
   
 ---

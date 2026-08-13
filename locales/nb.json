@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Norsk (Bokmål)",
+  "LANGUAGE_SELECTION": "Språk",
+  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)",
   "UPDATES_AVAILABLE": "Oppdateringer tilgjengelig: {count}",
   "SYSTEM_UP_TO_DATE": "Systemet er oppdatert",
   "DEBIAN_UPDATE_TITLE": "Debian Oppdatering",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Oppdaterer deb-get indeks...",
   "DEBGET_EXITING": "Avslutter.",
   "DEBGET_INVALID_OPTION": "Ugyldig valg. Vennligst prøv igjen.",
-  "LANG_NAME": "Norsk (Bokmål)",
-  "LANGUAGE_SELECTION": "Språk",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Hopper over tilbakeholdte pakker (forhindrer at systemet brekker)",
+  "HELD_SAFE_OFFER": "Følgende tilbakeholdte pakker kan trygt oppgraderes: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Vil du installere disse trygge pakkene nå? [j/N] ",
+  "NVIDIA_SYNC_START": "NVIDIA-driveroppdatering oppdaget. Synkroniserer Flatpak GL-runtimes...",
+  "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-runtimes ble vellykket synkronisert.",
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering mislyktes eller er frakoblet. Handling kreves i tray."
 }

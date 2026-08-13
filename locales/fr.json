@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Français",
+  "LANGUAGE_SELECTION": "Langue",
+  "SYSTEM_DEFAULT_LANG": "Par défaut du système (Auto)",
   "UPDATES_AVAILABLE": "Mises à jour disponibles : {count}",
   "SYSTEM_UP_TO_DATE": "Le système est à jour",
   "DEBIAN_UPDATE_TITLE": "Mise à jour Debian",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Mise à jour de l'index...",
   "DEBGET_EXITING": "Fermeture.",
   "DEBGET_INVALID_OPTION": "Option invalide.",
-  "LANG_NAME": "Français",
-  "LANGUAGE_SELECTION": "Langue",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Paquets conservés ignorés (évite d'endommager le système)",
+  "HELD_SAFE_OFFER": "Les paquets conservés suivants peuvent être mis à jour en toute sécurité: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Voulez-vous installer ces paquets sécurisés maintenant ? [o/N] ",
+  "NVIDIA_SYNC_START": "Mise à jour du pilote NVIDIA détectée. Synchronisation des runtimes Flatpak GL...",
+  "NVIDIA_SYNC_OK": "Runtimes NVIDIA Flatpak GL synchronisés avec succès.",
+  "NVIDIA_SYNC_FAIL": "Échec de la synchronisation NVIDIA Flatpak GL ou hors ligne. Action requise dans le tray."
 }

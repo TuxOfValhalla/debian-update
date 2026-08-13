@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# ==============================================================================
+# debian-update-tray: PyQt5 System Tray Indicator with i18n & Plasma 6 Safety
+# ==============================================================================
+
 import sys
 import json
 import os
@@ -7,8 +11,8 @@ import time
 import re
 import shutil
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QActionGroup
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QFileSystemWatcher, QTimer
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen, QFont
+from PyQt5.QtCore import QFileSystemWatcher, QTimer, Qt, QRectF
 
 sys.path.insert(0, "/usr/share/debian-update/lib")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
@@ -70,23 +74,6 @@ def get_next_check_in():
     except Exception:
         pass
 
-    try:
-        out = subprocess.check_output(
-            ["systemctl", "list-timers", "--all"],
-            stderr=subprocess.DEVNULL, text=True, timeout=3
-        )
-        for line in out.splitlines():
-            if "debian-update-check.timer" in line:
-                match = re.search(r'((?:\d+\w*\s*)+)\s+left', line, re.IGNORECASE)
-                if match:
-                    raw = match.group(1).strip()
-                    cleaned = re.sub(r'(\d+)\s*min', r'\1m', raw)
-                    cleaned = re.sub(r'(\d+)\s*hours?', r'\1h', cleaned)
-                    cleaned = re.sub(r'(\d+)\s*days?', r'\1d', cleaned)
-                    return re.sub(r'(\d+)\s*sec', r'\1s', cleaned)
-    except Exception:
-        pass
-
     return _("UNKNOWN")
 
 class DebianUpdateTray(QSystemTrayIcon):
@@ -97,9 +84,16 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         self.menu = QMenu()
         self.setContextMenu(self.menu)
-        self.menu.aboutToShow.connect(self.update_ui)
-
+        self.menu.aboutToShow.connect(self.build_menu)
         self.activated.connect(self.on_activated)
+
+        # Pulse animation state
+        self.pulse_timer = QTimer()
+        self.pulse_timer.timeout.connect(self.animate_pulse_frame)
+        self.pulse_ticks = 0
+        self.pulse_scale = 1.0
+        self.pulse_growing = False
+        self.is_pulsing = False
 
         cache_dir = os.path.dirname(STATUS_FILE)
         os.makedirs(cache_dir, exist_ok=True)
@@ -107,23 +101,20 @@ class DebianUpdateTray(QSystemTrayIcon):
         self.watcher = QFileSystemWatcher()
         if os.path.exists(cache_dir):
             self.watcher.addPath(cache_dir)
-            self.watcher.directoryChanged.connect(self.update_ui)
-            self.watcher.fileChanged.connect(self.update_ui)
+            self.watcher.directoryChanged.connect(self.update_status)
+            self.watcher.fileChanged.connect(self.update_status)
 
         self.poll_timer = QTimer()
-        self.poll_timer.timeout.connect(self.update_ui)
+        self.poll_timer.timeout.connect(self.update_status)
         self.poll_timer.start(10000)
 
-        self.update_ui()
+        self.update_status()
 
     def on_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.launch_upgrade()
 
     def set_language(self, lang_code):
-        # Lagre overstyring i konfigurasjonen. 
-        # VIKTIG: Vi roter ALDRI med self.menu eller kaller update_ui() her!
-        # Dette forhindrer Plasma fra å slette C++ minnepekere mens meny-klikket behandles.
         i18n.save_language_override(lang_code)
 
     def load_status(self):
@@ -135,9 +126,61 @@ class DebianUpdateTray(QSystemTrayIcon):
         except (json.JSONDecodeError, OSError):
             return None
 
-    def update_ui(self):
+    def create_warning_overlay_icon(self, base_icon_path, scale=1.0):
+        pixmap = QPixmap(base_icon_path)
+        if pixmap.isNull():
+            return QIcon(base_icon_path)
+
+        scaled_pixmap = pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        painter = QPainter(scaled_pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        badge_size = 40 * scale
+        x = 128 - badge_size - 4
+        y = 4
+
+        painter.setBrush(QBrush(QColor(255, 140, 0)))
+        painter.setPen(QPen(QColor(255, 255, 255), 3))
+        painter.drawEllipse(QRectF(x, y, badge_size, badge_size))
+
+        painter.setPen(QPen(QColor(255, 255, 255), 4))
+        painter.setFont(QFont("sans-serif", int(20 * scale), QFont.Bold))
+        painter.drawText(QRectF(x, y, badge_size, badge_size), Qt.AlignCenter, "!")
+
+        painter.end()
+        return QIcon(scaled_pixmap)
+
+    def trigger_pulse_animation(self):
+        if not self.is_pulsing:
+            self.is_pulsing = True
+            self.pulse_ticks = 0
+            self.pulse_scale = 1.0
+            self.pulse_growing = False
+            self.pulse_timer.start(100)
+
+    def animate_pulse_frame(self):
+        self.pulse_ticks += 1
+        if self.pulse_ticks >= 50:
+            self.pulse_timer.stop()
+            self.is_pulsing = False
+            self.pulse_scale = 1.0
+            self.setIcon(self.create_warning_overlay_icon(ICON_PENDING, scale=1.0))
+            return
+
+        if self.pulse_growing:
+            self.pulse_scale += 0.05
+            if self.pulse_scale >= 1.25:
+                self.pulse_growing = False
+        else:
+            self.pulse_scale -= 0.05
+            if self.pulse_scale <= 0.85:
+                self.pulse_growing = True
+
+        self.setIcon(self.create_warning_overlay_icon(ICON_PENDING, scale=self.pulse_scale))
+
+    def update_status(self):
+        # Update ONLY Icon & Tooltip in background - NEVER modify self.menu here
         data = self.load_status()
-        self.menu.clear()
 
         apt_list = data.get("apt_updates", []) if data else []
         flatpak_list = data.get("flatpak_updates", []) if data else []
@@ -146,13 +189,16 @@ class DebianUpdateTray(QSystemTrayIcon):
         debget_list = data.get("debget_updates", []) if data else []
         held_list = data.get("apt_held_back", []) if data else []
         reboot_req = data.get("reboot_required", False) if data else False
-        sb_info = data.get("secure_boot", {}) if data else {}
-        sb_warnings = sb_info.get("warnings", [])
+        nvidia_mismatch = data.get("nvidia_gl_mismatch", False) if data else False
 
         total_updates = len(apt_list) + len(flatpak_list) + len(snap_list) + len(appimage_list) + len(debget_list)
 
-        # Update Icon & Tooltip
-        if total_updates > 0:
+        if nvidia_mismatch:
+            if not self.is_pulsing:
+                self.trigger_pulse_animation()
+            tooltip = _("NVIDIA_SYNC_FAIL")
+            self.setToolTip(tooltip)
+        elif total_updates > 0:
             self.setIcon(QIcon(ICON_PENDING))
             tooltip = _("UPDATES_AVAILABLE", count=total_updates)
             details = []
@@ -165,7 +211,6 @@ class DebianUpdateTray(QSystemTrayIcon):
                 tooltip += "\n• " + "\n• ".join(details)
             if held_list: tooltip += f"\n• " + _("TOOLTIP_HELD", count=len(held_list))
             if reboot_req: tooltip += "\n" + _("TOOLTIP_REBOOT")
-            if sb_warnings: tooltip += "\n" + _("TOOLTIP_WARNINGS", count=len(sb_warnings))
             self.setToolTip(tooltip)
         else:
             self.setIcon(QIcon(ICON_OK))
@@ -177,6 +222,20 @@ class DebianUpdateTray(QSystemTrayIcon):
             self.last_notified_count = total_updates
         elif total_updates == 0:
             self.last_notified_count = 0
+
+    def build_menu(self):
+        # Build menu items dynamically ONLY when user clicks to open the context menu
+        data = self.load_status()
+        self.menu.clear()
+
+        apt_list = data.get("apt_updates", []) if data else []
+        flatpak_list = data.get("flatpak_updates", []) if data else []
+        snap_list = data.get("snap_updates", []) if data else []
+        appimage_list = data.get("appimage_updates", []) if data else []
+        debget_list = data.get("debget_updates", []) if data else []
+        held_list = data.get("apt_held_back", []) if data else []
+
+        total_updates = len(apt_list) + len(flatpak_list) + len(snap_list) + len(appimage_list) + len(debget_list)
 
         # 1. Top Submenu: Updates available (N)
         pending_menu = self.menu.addMenu(_("UPDATES_AVAILABLE", count=total_updates))
@@ -194,53 +253,45 @@ class DebianUpdateTray(QSystemTrayIcon):
                 if pkgs:
                     pending_menu.addSection(f"{title} ({len(pkgs)})")
                     for pkg in pkgs:
-                        action = QAction(f"  {pkg}", self)
+                        action = QAction(f"  {pkg}", pending_menu)
                         action.setEnabled(False)
                         pending_menu.addAction(action)
 
             if held_list:
                 pending_menu.addSection(_("HELD_BACK_MANUAL"))
                 for pkg in held_list:
-                    action = QAction(f"  {pkg}", self)
+                    action = QAction(f"  {pkg}", pending_menu)
                     action.setEnabled(False)
                     pending_menu.addAction(action)
         else:
-            no_up = QAction(_("ALL_PACKAGES_UP_TO_DATE"), self)
+            no_up = QAction(_("ALL_PACKAGES_UP_TO_DATE"), pending_menu)
             no_up.setEnabled(False)
             pending_menu.addAction(no_up)
-
-        if sb_warnings:
-            self.menu.addSeparator()
-            warn_menu = self.menu.addMenu(_("SECURITY_WARNINGS", count=len(sb_warnings)))
-            for w in sb_warnings:
-                w_action = QAction(f"  {w}", self)
-                w_action.setEnabled(False)
-                warn_menu.addAction(w_action)
 
         # 2. Timers
         time_since = get_time_since_last_check(data)
         next_in = get_next_check_in()
 
-        last_action = QAction(_("TIME_SINCE_LAST_CHECK", time=time_since), self)
+        last_action = QAction(_("TIME_SINCE_LAST_CHECK", time=time_since), self.menu)
         last_action.setEnabled(False)
         self.menu.addAction(last_action)
 
-        next_action = QAction(_("NEXT_CHECK_IN", time=next_in), self)
+        next_action = QAction(_("NEXT_CHECK_IN", time=next_in), self.menu)
         next_action.setEnabled(False)
         self.menu.addAction(next_action)
 
         self.menu.addSeparator()
 
         # 3. Actions
-        check_action = QAction(_("CHECK_FOR_UPDATES"), self)
+        check_action = QAction(_("CHECK_FOR_UPDATES"), self.menu)
         check_action.triggered.connect(self.trigger_check)
         self.menu.addAction(check_action)
 
-        upgrade_action = QAction(_("UPDATE_NOW"), self)
+        upgrade_action = QAction(_("UPDATE_NOW"), self.menu)
         upgrade_action.triggered.connect(self.launch_upgrade)
         self.menu.addAction(upgrade_action)
 
-        debget_action = QAction(_("GET_DEB_FILES"), self)
+        debget_action = QAction(_("GET_DEB_FILES"), self.menu)
         debget_action.triggered.connect(self.launch_debget)
         self.menu.addAction(debget_action)
 
@@ -248,10 +299,10 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         # 4. Language Selector Submenu
         lang_menu = self.menu.addMenu(_("LANGUAGE_SELECTION"))
-        group = QActionGroup(self)
+        group = QActionGroup(lang_menu)
         group.setExclusive(True)
 
-        sys_action = QAction(_("SYSTEM_DEFAULT_LANG"), self)
+        sys_action = QAction(_("SYSTEM_DEFAULT_LANG"), lang_menu)
         sys_action.setCheckable(True)
         if not i18n.manual_override:
             sys_action.setChecked(True)
@@ -262,7 +313,7 @@ class DebianUpdateTray(QSystemTrayIcon):
 
         avail_langs = i18n.get_available_languages()
         for code, name in avail_langs.items():
-            l_action = QAction(name, self)
+            l_action = QAction(name, lang_menu)
             l_action.setCheckable(True)
             if i18n.manual_override == code:
                 l_action.setChecked(True)
@@ -273,7 +324,7 @@ class DebianUpdateTray(QSystemTrayIcon):
         self.menu.addSeparator()
 
         # 5. Quit
-        quit_action = QAction(_("QUIT"), self)
+        quit_action = QAction(_("QUIT"), self.menu)
         quit_action.triggered.connect(self.app.quit)
         self.menu.addAction(quit_action)
 
@@ -282,7 +333,7 @@ class DebianUpdateTray(QSystemTrayIcon):
         self.setToolTip(_("CHECKING_FOR_UPDATES"))
         self.app.processEvents()
         try:
-            subprocess.Popen(["sudo", "systemctl", "start", "--no-block", "debian-update-check.service"])
+            subprocess.Popen(["systemctl", "start", "--no-block", "debian-update-check.service"])
         except Exception:
             pass
 

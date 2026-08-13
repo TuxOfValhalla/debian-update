@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Русский",
+  "LANGUAGE_SELECTION": "Язык",
+  "SYSTEM_DEFAULT_LANG": "Системный по умолчанию (Auto)",
   "UPDATES_AVAILABLE": "Доступны обновления: {count}",
   "SYSTEM_UP_TO_DATE": "Система обновлена",
   "DEBIAN_UPDATE_TITLE": "Обновление Debian",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Обновление индекса...",
   "DEBGET_EXITING": "Выход.",
   "DEBGET_INVALID_OPTION": "Неверный вариант.",
-  "LANG_NAME": "Русский",
-  "LANGUAGE_SELECTION": "Язык",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Пропуск удержанных пакетов (предотвращает сбой системы)",
+  "HELD_SAFE_OFFER": "Следующие удержанные пакеты безопасны для обновления: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Установить эти безопасные пакеты сейчас? [д/Н] ",
+  "NVIDIA_SYNC_START": "Обнаружено обновление драйвера NVIDIA. Синхронизация среды выполнения Flatpak GL...",
+  "NVIDIA_SYNC_OK": "Среда выполнения NVIDIA Flatpak GL успешно синхронизирована.",
+  "NVIDIA_SYNC_FAIL": "Сбой синхронизации NVIDIA Flatpak GL или нет сети. Требуется действие в трее."
 }

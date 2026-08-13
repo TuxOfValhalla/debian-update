@@ -2,7 +2,7 @@
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.9.4"
+CURRENT_VERSION="0.10.1"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"
@@ -72,6 +72,49 @@ except Exception:
     fi
 }
 
+check_held_back_packages() {
+    local held_pkgs=()
+
+    while read -r pkg; do
+        [ -n "$pkg" ] && held_pkgs+=("$pkg")
+    done < <(apt-mark showhold 2>/dev/null || true)
+
+    while read -r pkg; do
+        if [ -n "$pkg" ] && [[ ! " ${held_pkgs[*]:-} " =~ " ${pkg} " ]]; then
+            held_pkgs+=("$pkg")
+        fi
+    done < <(apt-get -s upgrade 2>/dev/null | grep -E "^  [a-zA-Z0-9]" | grep -v -E "^  (Inst|Conf)" | tr -s ' ' '\n' | grep -v '^$' || true)
+
+    if [ ${#held_pkgs[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    local sim_output
+    sim_output=$(apt-get -s install "${held_pkgs[@]}" 2>&1 || true)
+
+    local has_removals=0
+    if echo "$sim_output" | grep -iE "(REMOVED|REMOVING|fjernes)" >/dev/null 2>&1; then
+        has_removals=1
+    fi
+
+    local has_unmet=0
+    if echo "$sim_output" | grep -iE "(unmet dependencies|uoppfylte)" >/dev/null 2>&1; then
+        has_unmet=1
+    fi
+
+    if [ $has_removals -eq 1 ] || [ $has_unmet -eq 1 ]; then
+        echo -e "${YELLOW}$(_ HELD_SKIPPED_RISK)${RESET}"
+    else
+        local pkgs_str
+        pkgs_str=$(IFS=", "; echo "${held_pkgs[*]}")
+        echo -e "${GREEN}$(_ HELD_SAFE_OFFER packages="$pkgs_str")${RESET}"
+        read -r -p "$(_ PROMPT_INSTALL_SAFE_HELD)" REPLY || REPLY="N"
+        if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+            sudo NEEDRESTART_MODE=a apt-get install -y "${held_pkgs[@]}"
+        fi
+    fi
+}
+
 main() {
     echo -e "${CYAN}${BOLD}$(_ CLI_TITLE version="$CURRENT_VERSION")${RESET}\n"
 
@@ -130,6 +173,9 @@ if os.path.exists(status_file):
     if command -v apt-listbugs >/dev/null 2>&1; then
         echo -e "${YELLOW}$(_ CHECKING_APT_LISTBUGS)${RESET}"
     fi
+
+    check_held_back_packages
+
     sudo NEEDRESTART_MODE=a apt upgrade
 
     # 2. Flatpak Packages

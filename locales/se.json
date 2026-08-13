@@ -1,4 +1,7 @@
 {
+  "LANG_NAME": "Davvisámegiella (Nord-Samisk)",
+  "LANGUAGE_SELECTION": "Giella",
+  "SYSTEM_DEFAULT_LANG": "Vuogádatstandard (Auto)",
   "UPDATES_AVAILABLE": "Ođasmahttimat gávdnojit: {count}",
   "SYSTEM_UP_TO_DATE": "Vuogádat lea ođasmahtton",
   "DEBIAN_UPDATE_TITLE": "Debian Ođasmahttin",
@@ -83,7 +86,10 @@
   "DEBGET_UPDATING_INDEX": "Ođasmahttimin rekupera...",
   "DEBGET_EXITING": "Heaitimin.",
   "DEBGET_INVALID_OPTION": "Mekanihkalaš meagga.",
-  "LANG_NAME": "Davvisámegiella (Nord-Samisk)",
-  "LANGUAGE_SELECTION": "Giella",
-  "SYSTEM_DEFAULT_LANG": "Systemstandard (Auto)"
+  "HELD_SKIPPED_RISK": "Meattáren doalahuvvon páhkaid (eastada vuogádaga krasjema)",
+  "HELD_SAFE_OFFER": "Dát doalahuvvon páhkat leat sihkarat ođasmahttimii: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Hálidat go asahit dáid sihkaris páhkaid dál? [j/N] ",
+  "NVIDIA_SYNC_START": "NVIDIA-vuoddiođasmahttin dárkkistuvvon. Ođasmahttimin Flatpak GL...",
+  "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL lea lihkosmuvvan ođasmahttojuvvon.",
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL ođasmahttin feile. Dárkkis stivranbarffu."
 }

@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# debian-update-check: Background status checker for debian-update
+# ==============================================================================
+
+set -euo pipefail
+
+STATUS_FILE="/var/cache/debian-update/status.json"
+NVIDIA_STATE_FILE="/var/cache/debian-update/nvidia_state.json"
+mkdir -p "$(dirname "$STATUS_FILE")"
+
+# ------------------------------------------------------------------------------
+# 1. CPU-Light NVIDIA Hardware Check & Flatpak GL Match Verification
+# ------------------------------------------------------------------------------
+NVIDIA_ACTIVE_VER=""
+NVIDIA_MISMATCH=false
+
+if [ -f "/sys/module/nvidia/version" ]; then
+    NVIDIA_ACTIVE_VER=$(cat /sys/module/nvidia/version 2>/dev/null || true)
+elif [ -f "/proc/driver/nvidia/version" ]; then
+    NVIDIA_ACTIVE_VER=$(head -n 1 /proc/driver/nvidia/version | awk '{print $8}' 2>/dev/null || true)
+fi
+
+if [ -n "$NVIDIA_ACTIVE_VER" ] && command -v flatpak &>/dev/null; then
+    # Verify if matching Flatpak GL runtime is already installed on the system
+    MATCH_FOUND=$(python3 -c "
+import subprocess, sys
+
+active_ver = '$NVIDIA_ACTIVE_VER'.strip()
+ver_dash = active_ver.replace('.', '-')
+
+try:
+    out = subprocess.check_output(['flatpak', 'list', '--runtime'], text=True, stderr=subprocess.DEVNULL)
+    for line in out.splitlines():
+        if 'GL.nvidia' in line or 'nvidia' in line.lower():
+            if active_ver in line or ver_dash in line:
+                sys.exit(0) # Found matching runtime
+except Exception:
+    pass
+
+sys.exit(1) # Not found
+" && echo "true" || echo "false")
+
+    if [ "$MATCH_FOUND" = "true" ]; then
+        # Runtime is already present and matching - state is perfectly synced
+        echo "[NVIDIA-Sync] Matching Flatpak GL runtime for '$NVIDIA_ACTIVE_VER' is already installed."
+        python3 -c "import json, os; os.makedirs(os.path.dirname('$NVIDIA_STATE_FILE'), exist_ok=True); json.dump({'last_synced_version': '$NVIDIA_ACTIVE_VER'}, open('$NVIDIA_STATE_FILE', 'w'))" 2>/dev/null || true
+        NVIDIA_MISMATCH=false
+    else
+        # Runtime is missing - attempt silent sync
+        echo "[NVIDIA-Sync] Missing Flatpak GL runtime for '$NVIDIA_ACTIVE_VER'. Attempting silent sync..."
+        if flatpak update -y --non-interactive &>/dev/null; then
+            echo "[NVIDIA-Sync] Silent sync completed."
+            python3 -c "import json, os; os.makedirs(os.path.dirname('$NVIDIA_STATE_FILE'), exist_ok=True); json.dump({'last_synced_version': '$NVIDIA_ACTIVE_VER'}, open('$NVIDIA_STATE_FILE', 'w'))" 2>/dev/null || true
+            NVIDIA_MISMATCH=false
+        else
+            echo "[NVIDIA-Sync] Silent sync failed or offline. Flagging for tray warning."
+            NVIDIA_MISMATCH=true
+        fi
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 2. Package Status Checks (APT, Flatpak, Snap, AppImage, deb-get)
+# ------------------------------------------------------------------------------
+export APT_UPDATES_RAW=$(apt-get -s upgrade 2>/dev/null | grep -E "^Inst " | awk '{print $2}' | jq -R . | jq -s . 2>/dev/null || echo "[]")
+export APT_HELD_RAW=$(apt-mark showhold 2>/dev/null | jq -R . | jq -s . 2>/dev/null || echo "[]")
+
+if command -v flatpak &>/dev/null; then
+    export FLATPAK_UPDATES_RAW=$(flatpak remote-ls --updates --short 2>/dev/null | jq -R . | jq -s . 2>/dev/null || echo "[]")
+else
+    export FLATPAK_UPDATES_RAW="[]"
+fi
+
+if command -v snap &>/dev/null; then
+    export SNAP_UPDATES_RAW=$(snap refresh --list 2>/dev/null | tail -n +2 | awk '{print $1}' | jq -R . | jq -s . 2>/dev/null || echo "[]")
+else
+    export SNAP_UPDATES_RAW="[]"
+fi
+
+export APPIMAGE_UPDATES_RAW="[]"
+export DEBGET_UPDATES_RAW="[]"
+export REBOOT_REQ_RAW="false"
+[ -f "/var/run/reboot-required" ] && export REBOOT_REQ_RAW="true"
+export NVIDIA_MISMATCH_RAW="$NVIDIA_MISMATCH"
+export NVIDIA_VER_RAW="$NVIDIA_ACTIVE_VER"
+
+# ------------------------------------------------------------------------------
+# 3. Safe Python Writer using Environment Variables
+# ------------------------------------------------------------------------------
+python3 - << 'PYEOF'
+import os
+import json
+import time
+from datetime import datetime, timezone
+
+status_file = "/var/cache/debian-update/status.json"
+
+def safe_json_load(env_var):
+    raw = os.environ.get(env_var, "[]").strip()
+    if not raw:
+        return []
+    try:
+        return json.loads(raw)
+    except Exception:
+        return []
+
+data = {
+    "last_check_ts": time.time(),
+    "last_check": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "apt_updates": safe_json_load("APT_UPDATES_RAW"),
+    "apt_held_back": safe_json_load("APT_HELD_RAW"),
+    "flatpak_updates": safe_json_load("FLATPAK_UPDATES_RAW"),
+    "snap_updates": safe_json_load("SNAP_UPDATES_RAW"),
+    "snap_installed": os.path.exists("/usr/bin/snap"),
+    "appimage_updates": safe_json_load("APPIMAGE_UPDATES_RAW"),
+    "appimage_installed": os.path.exists("/usr/bin/am") or os.path.exists("/usr/local/bin/am"),
+    "debget_updates": safe_json_load("DEBGET_UPDATES_RAW"),
+    "debget_installed": os.path.exists("/usr/bin/deb-get"),
+    "reboot_required": os.environ.get("REBOOT_REQ_RAW") == "true",
+    "nvidia_gl_mismatch": os.environ.get("NVIDIA_MISMATCH_RAW") == "true",
+    "nvidia_driver_version": os.environ.get("NVIDIA_VER_RAW", ""),
+    "secure_boot": {
+        "state": "disabled",
+        "warnings": []
+    }
+}
+
+os.makedirs(os.path.dirname(status_file), exist_ok=True)
+with open(status_file, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+
+PYEOF
+
+echo "[debian-update-check] Status cache updated successfully."
