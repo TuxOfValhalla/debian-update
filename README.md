@@ -47,6 +47,11 @@ Use of this software should be safe, as it is rigorously tested by me, but as al
   * **System Tray Indicator:** Qt-based status icon displaying pending update counts in tooltip and context menu.
   * **Notifications:** Native desktop notifications via KDE Plasma / Freedesktop notification daemon.
 
+* **Multi language support:**
+  * **Northern languages:** Norwegian (bokmål, nynorsk) Northern Sami, Swedish, Danish, Icelandic, Finnish and Danish are all supported.
+  * **European Languages and Russian:** German, French, Spanish, Portuguese, Dutch and Russian.
+  * **Eastern Asian Languages and Hindi:** Chinese, Japanese, Korean and Hindi.
+  
 ---
 
 ## 🚀 Installation

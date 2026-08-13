@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
-# debian-update-debget v0.7.0
 set -euo pipefail
 
-trap 'echo -e "\nExiting."; exit 0' INT TERM
+I18N_PY="/usr/share/debian-update/lib/debian_update_i18n.py"
+if [ ! -f "$I18N_PY" ]; then
+    I18N_PY="$(dirname "$(readlink -f "$0")")/../lib/debian_update_i18n.py"
+fi
+
+_() {
+    python3 "$I18N_PY" "$@"
+}
+
+trap 'echo -e "\n$(_ DEBGET_EXITING)"; exit 0' INT TERM
 
 BOLD="\033[1m"
 GREEN="\033[1;32m"
@@ -10,49 +18,47 @@ CYAN="\033[1;36m"
 YELLOW="\033[1;33m"
 RESET="\033[0m"
 
-echo -e "${CYAN}${BOLD}Debian-Update: Third-Party .deb Package Manager (deb-get)${RESET}\n"
+echo -e "${CYAN}${BOLD}$(_ DEBGET_MANAGER_TITLE)${RESET}\n"
 
-# Verify deb-get binary
 if ! command -v deb-get >/dev/null 2>&1; then
-    echo "deb-get is not installed on this system."
-    read -r -p "Press [ENTER] to exit..." || true
+    echo "$(_ DEBGET_NOT_INSTALLED)"
+    read -r -p "$(_ PRESS_ENTER_EXIT)" || true
     exit 1
 fi
 
-# Main action loop
 while true; do
-    echo "Available actions:"
-    echo " 1) List installed third-party .deb packages"
-    echo " 2) Search for a package"
-    echo " 3) Install a package"
-    echo " 4) Update deb-get repository index"
-    echo " Q) Exit"
+    echo "$(_ DEBGET_ACTIONS)"
+    echo "$(_ DEBGET_OPT1)"
+    echo "$(_ DEBGET_OPT2)"
+    echo "$(_ DEBGET_OPT3)"
+    echo "$(_ DEBGET_OPT4)"
+    echo "$(_ DEBGET_OPT_Q)"
     echo ""
-    read -r -p "Select option [1-4, Q]: " CHOICE || CHOICE=""
+    read -r -p "$(_ DEBGET_PROMPT_CHOICE)" CHOICE || CHOICE=""
 
     case "$CHOICE" in
         1)
-            echo -e "\n${GREEN}Installed packages via deb-get:${RESET}"
+            echo -e "\n${GREEN}$(_ DEBGET_INSTALLED_PKGS)${RESET}"
             deb-get list || true
             ;;
         2)
-            read -r -p "Enter package name to search (or ENTER to cancel): " PKG || PKG=""
+            read -r -p "$(_ DEBGET_PROMPT_SEARCH)" PKG || PKG=""
             [ -n "$PKG" ] && deb-get search "$PKG" || true
             ;;
         3)
-            read -r -p "Enter package name to install (or ENTER to cancel): " PKG || PKG=""
+            read -r -p "$(_ DEBGET_PROMPT_INSTALL)" PKG || PKG=""
             [ -n "$PKG" ] && sudo deb-get install "$PKG" || true
             ;;
         4)
-            echo -e "\n${GREEN}Updating deb-get index...${RESET}"
+            echo -e "\n${GREEN}$(_ DEBGET_UPDATING_INDEX)${RESET}"
             sudo deb-get update || true
             ;;
         q|Q)
-            echo "Exiting."
+            echo "$(_ DEBGET_EXITING)"
             exit 0
             ;;
         *)
-            echo -e "${YELLOW}Invalid option. Please try again.${RESET}"
+            echo -e "${YELLOW}$(_ DEBGET_INVALID_OPTION)${RESET}"
             ;;
     esac
     echo ""

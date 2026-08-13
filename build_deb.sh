@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.8.17-1"
+VERSION="0.9.4-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -11,13 +11,15 @@ SRC_DIR="${DEV_DIR}"
 
 echo "==> Preparing package structure in /tmp for v${VERSION}..."
 rm -rf "${BUILD_ROOT}"
-mkdir -p "${BUILD_ROOT}"/{DEBIAN,usr/bin,usr/lib/debian-update,usr/share/debian-update/lib,usr/share/applications,usr/share/icons/hicolor/128x128/apps,usr/share/doc/debian-update,usr/lib/systemd/system,etc/polkit-1/rules.d} "${DEV_DIR}/releases"
+mkdir -p "${BUILD_ROOT}"/{DEBIAN,usr/bin,usr/lib/debian-update,usr/share/debian-update/lib,usr/share/debian-update/locales,usr/share/applications,usr/share/icons/hicolor/128x128/apps,usr/share/doc/debian-update,usr/lib/systemd/system,etc/polkit-1/rules.d} "${DEV_DIR}/releases"
 
 echo "==> Copying application files..."
 cp "${SRC_DIR}/bin/debian-update-cli" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/bin/debian-update-debget" "${BUILD_ROOT}/usr/bin/"
 cp "${SRC_DIR}/lib/debian-update-tray" "${BUILD_ROOT}/usr/lib/debian-update/"
 cp "${SRC_DIR}/lib/check_backend.sh" "${BUILD_ROOT}/usr/share/debian-update/lib/"
+cp "${SRC_DIR}/lib/debian_update_i18n.py" "${BUILD_ROOT}/usr/share/debian-update/lib/"
+cp "${SRC_DIR}"/locales/*.json "${BUILD_ROOT}/usr/share/debian-update/locales/"
 cp "${SRC_DIR}/desktop/debian-update-tray.desktop" "${BUILD_ROOT}/usr/share/applications/"
 cp "${SRC_DIR}/systemd/debian-update-check.service" "${BUILD_ROOT}/usr/lib/systemd/system/"
 cp "${SRC_DIR}/systemd/debian-update-check.timer" "${BUILD_ROOT}/usr/lib/systemd/system/"

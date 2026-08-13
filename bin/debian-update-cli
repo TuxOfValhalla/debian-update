@@ -2,7 +2,7 @@
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.8.17"
+CURRENT_VERSION="0.9.4"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"
@@ -12,20 +12,29 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RESET="\033[0m"
 
+I18N_PY="/usr/share/debian-update/lib/debian_update_i18n.py"
+if [ ! -f "$I18N_PY" ]; then
+    I18N_PY="$(dirname "$(readlink -f "$0")")/../lib/debian_update_i18n.py"
+fi
+
+_() {
+    python3 "$I18N_PY" "$@"
+}
+
 cleanup_on_exit() {
     echo ""
-    read -r -p "Press [ENTER] to exit..." || true
+    read -r -p "$(_ PRESS_ENTER_EXIT)" || true
 }
 trap cleanup_on_exit EXIT
 
 check_self_update() {
-    echo -e "${CYAN}Checking for debian-update updates on GitHub...${RESET}"
+    echo -e "${CYAN}$(_ CHECKING_GITHUB_UPDATES)${RESET}"
     
     local release_json
     release_json=$(curl -sSL -m 5 "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || true)
     
     if [ -z "$release_json" ]; then
-        echo -e "${YELLOW}Unable to reach GitHub release service. Skipping self-update check.${RESET}\n"
+        echo -e "${YELLOW}$(_ GITHUB_UNREACHABLE)${RESET}\n"
         return 0
     fi
 
@@ -42,146 +51,157 @@ except Exception:
 ' <<< "$release_json")" || true
 
     if [ -n "${latest_version:-}" ] && [ "$latest_version" != "$CURRENT_VERSION" ] && [ -n "${deb_url:-}" ]; then
-        echo -e "${GREEN}${BOLD}A new version of debian-update is available: v${latest_version} (Installed: v${CURRENT_VERSION})${RESET}"
-        read -r -p "Do you want to upgrade debian-update now? [y/N] " REPLY || REPLY="N"
-        if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-            echo -e "${GREEN}Downloading debian-update v${latest_version}...${RESET}"
+        echo -e "${GREEN}${BOLD}$(_ NEW_APP_VERSION_AVAILABLE latest="$latest_version" current="$CURRENT_VERSION")${RESET}"
+        read -r -p "$(_ PROMPT_UPGRADE_APP)" REPLY || REPLY="N"
+        if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+            echo -e "${GREEN}$(_ DOWNLOADING_APP latest="$latest_version")${RESET}"
             local tmp_deb="/tmp/debian-update_latest.deb"
             curl -sSL -o "$tmp_deb" "$deb_url"
             
-            echo -e "${GREEN}Installing package...${RESET}"
+            echo -e "${GREEN}$(_ INSTALLING_PACKAGE)${RESET}"
             sudo apt install -y "$tmp_deb"
             rm -f "$tmp_deb"
             
-            echo -e "\n${CYAN}${BOLD}Upgrade complete. Reloading application...${RESET}\n"
+            echo -e "\n${CYAN}${BOLD}$(_ UPGRADE_COMPLETE_RELOADING)${RESET}\n"
             exec /usr/bin/debian-update-cli "$@"
         else
-            echo -e "${YELLOW}Skipping application upgrade. Proceeding with system updates...${RESET}\n"
+            echo -e "${YELLOW}$(_ SKIPPING_APP_UPGRADE)${RESET}\n"
         fi
     else
-        echo -e "${GREEN}debian-update is up to date (v${CURRENT_VERSION}).${RESET}\n"
+        echo -e "${GREEN}$(_ APP_UP_TO_DATE version="$CURRENT_VERSION")${RESET}\n"
     fi
 }
 
 main() {
-    echo -e "${CYAN}${BOLD}Debian-Update v${CURRENT_VERSION}${RESET}\n"
+    echo -e "${CYAN}${BOLD}$(_ CLI_TITLE version="$CURRENT_VERSION")${RESET}\n"
 
     check_self_update "$@"
 
     STATUS_FILE="/var/cache/debian-update/status.json"
 
     if [ -f "$STATUS_FILE" ]; then
-        echo -e "${CYAN}${BOLD}Updates Available:${RESET}"
+        echo -e "${CYAN}${BOLD}$(_ CLI_UPDATES_HEADER)${RESET}"
         python3 -c '
-import json
+import json, sys, os
+sys.path.insert(0, "/usr/share/debian-update/lib")
 try:
-    with open("'"$STATUS_FILE"'") as f:
-        d = json.load(f)
-        sources = [("APT", d.get("apt_updates", [])),
-                   ("Flatpak", d.get("flatpak_updates", [])),
-                   ("Snap", d.get("snap_updates", [])),
-                   ("AppImages", d.get("appimage_updates", [])),
-                   ("Third-Party .deb", d.get("debget_updates", [])),
-                   ("Held Back", d.get("apt_held_back", []))]
-        has_up = False
-        for name, pkgs in sources:
-            if pkgs:
-                has_up = True
-                print(f"\033[1;32m{name}:\033[0m")
-                for pkg in pkgs: print(f"  • {pkg}")
-        if not has_up: print("No pending updates found.")
-except Exception: pass
+    from debian_update_i18n import _
+except ImportError:
+    def _(k, **kw): return k
+
+status_file = "'"$STATUS_FILE"'"
+if os.path.exists(status_file):
+    try:
+        with open(status_file) as f:
+            d = json.load(f)
+            sources = [(_("CAT_APT"), d.get("apt_updates", [])),
+                       (_("CAT_FLATPAK"), d.get("flatpak_updates", [])),
+                       (_("CAT_SNAP"), d.get("snap_updates", [])),
+                       (_("CAT_APPIMAGES"), d.get("appimage_updates", [])),
+                       (_("CAT_DEBGET"), d.get("debget_updates", [])),
+                       (_("HELD_BACK_MANUAL"), d.get("apt_held_back", []))]
+            has_up = False
+            for name, pkgs in sources:
+                if pkgs:
+                    has_up = True
+                    print(f"\033[1;32m{name}:\033[0m")
+                    for pkg in pkgs: print(f"  • {pkg}")
+            if not has_up: print(_("NO_PENDING_UPDATES"))
+    except Exception: pass
 '
         echo ""
     fi
 
-    read -r -p "Continue with updates? [Y/n] " REPLY || REPLY="Y"
+    read -r -p "$(_ PROMPT_CONTINUE_UPDATES)" REPLY || REPLY="Y"
     REPLY=${REPLY:-Y}
-    if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "\n${YELLOW}Operation cancelled by user. No changes made.${RESET}"
+    if [[ ! "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+        echo -e "\n${YELLOW}$(_ CANCELLED_BY_USER)${RESET}"
         return 0
     fi
 
-    echo -e "\n${CYAN}Validating administrator privileges...${RESET}"
+    echo -e "\n${CYAN}$(_ VALIDATING_ADMIN)${RESET}"
     sudo -v
 
     # 1. APT Packages
-    echo -e "\n${BLUE}${BOLD}Upgrading APT Packages${RESET}"
+    echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_APT)${RESET}"
+    echo -e "${GREEN}$(_ REFRESHING_APT)${RESET}"
+    sudo apt update
+
     if command -v apt-listbugs >/dev/null 2>&1; then
-        echo -e "${YELLOW}Checking Debian Bug Tracking System (apt-listbugs)...${RESET}"
+        echo -e "${YELLOW}$(_ CHECKING_APT_LISTBUGS)${RESET}"
     fi
     sudo NEEDRESTART_MODE=a apt upgrade
 
-    # 2. Flatpak Packages (Conditional)
+    # 2. Flatpak Packages
     if command -v flatpak >/dev/null 2>&1; then
-        echo -e "\n${BLUE}${BOLD}Upgrading Flatpak Packages${RESET}"
+        echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_FLATPAK)${RESET}"
         flatpak update || true
     fi
 
-    # 3. Snap Packages (Conditional)
+    # 3. Snap Packages
     if command -v snap >/dev/null 2>&1; then
-        echo -e "\n${BLUE}${BOLD}Upgrading Snap Packages${RESET}"
-        echo -e "${GREEN}Checking & upgrading Snap packages...${RESET}"
+        echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_SNAP)${RESET}"
+        echo -e "${GREEN}$(_ REFRESHING_SNAP)${RESET}"
         sudo snap refresh || true
     fi
 
-    # 4. AppImages (Conditional)
+    # 4. AppImages
     if command -v am >/dev/null 2>&1 || command -v appimageupdatetool >/dev/null 2>&1; then
-        echo -e "\n${BLUE}${BOLD}Upgrading AppImages${RESET}"
+        echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_APPIMAGES)${RESET}"
         if command -v am >/dev/null 2>&1; then
-            echo -e "${GREEN}Updating AppImages via AM (AppImage Manager)...${RESET}"
-            timeout 60s am update || echo -e "${YELLOW}AM update timed out (60s guard) or finished with warnings.${RESET}"
+            echo -e "${GREEN}$(_ UPDATING_APPIMAGES_AM)${RESET}"
+            timeout 60s am update || echo -e "${YELLOW}$(_ AM_TIMEOUT)${RESET}"
         elif command -v appimageupdatetool >/dev/null 2>&1; then
-            echo -e "${GREEN}Updating AppImages via appimageupdatetool...${RESET}"
+            echo -e "${GREEN}$(_ UPDATING_APPIMAGES_TOOL)${RESET}"
             local search_dirs=()
             [ -d /opt/appimages ] && search_dirs+=(/opt/appimages)
             search_dirs+=(/home/* /root)
             find "${search_dirs[@]}" -maxdepth 3 \( -name "*.AppImage" -o -name "*.appimage" \) 2>/dev/null | while read -r img; do
                 [ -f "$img" ] || continue
-                echo "Checking $img..."
+                echo "$(_ CHECKING_APPIMAGE img="$img")"
                 timeout 15s appimageupdatetool --overwrite "$img" || true
             done
         fi
     fi
 
-    # 5. Third-Party .deb Packages (deb-get) (Conditional)
+    # 5. Third-Party .deb Packages (deb-get)
     if command -v deb-get >/dev/null 2>&1; then
-        echo -e "\n${BLUE}${BOLD}Upgrading Third-Party .deb Packages (deb-get)${RESET}"
-        echo -e "${GREEN}Checking & upgrading 3rd-party .deb packages...${RESET}"
+        echo -e "\n${BLUE}${BOLD}$(_ UPGRADING_DEBGET)${RESET}"
+        echo -e "${GREEN}$(_ REFRESHING_DEBGET)${RESET}"
         sudo deb-get update >/dev/null 2>&1 || true
-        timeout 60s sudo NEEDRESTART_MODE=a deb-get upgrade || echo -e "${YELLOW}deb-get upgrade timed out (60s guard) or completed with warnings. Skipping...${RESET}"
+        timeout 60s sudo NEEDRESTART_MODE=a deb-get upgrade || echo -e "${YELLOW}$(_ DEBGET_TIMEOUT)${RESET}"
     fi
 
-    # Maintenance & Cleanup Prompt
-    echo -e "\n${BLUE}${BOLD}System Cleanup & Service Inspection${RESET}"
-    read -r -p "Do you want to perform system cleanup (autoremove & unused flatpaks)? [y/N] " REPLY || REPLY="N"
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "${GREEN}Running package cleanup...${RESET}"
+    # Maintenance & Cleanup
+    echo -e "\n${BLUE}${BOLD}$(_ SYSTEM_CLEANUP_TITLE)${RESET}"
+    read -r -p "$(_ PROMPT_CLEANUP)" REPLY || REPLY="N"
+    if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+        echo -e "${GREEN}$(_ RUNNING_CLEANUP)${RESET}"
         sudo NEEDRESTART_MODE=a apt autoremove
         if command -v flatpak >/dev/null 2>&1; then
             flatpak uninstall --unused || true
         fi
     else
-        echo -e "${YELLOW}Skipping cleanup step.${RESET}"
+        echo -e "${YELLOW}$(_ SKIPPING_CLEANUP)${RESET}"
     fi
 
     if command -v needrestart >/dev/null 2>&1; then
-        echo -e "\n${BOLD}Service Restart Inspection (needrestart)${RESET}"
+        echo -e "\n${BOLD}$(_ NEEDRESTART_TITLE)${RESET}"
         sudo needrestart -b || true
     fi
 
-    echo -e "\n${CYAN}Refreshing status cache...${RESET}"
+    echo -e "\n${CYAN}$(_ REFRESHING_CACHE)${RESET}"
     sudo systemctl daemon-reload >/dev/null 2>&1 || true
     sudo systemctl start --no-block debian-update-check.service || true
 
-    echo -e "\n${GREEN}${BOLD}Upgrade complete. System is up to date.${RESET}"
+    echo -e "\n${GREEN}${BOLD}$(_ UPGRADE_COMPLETE_SYSTEM)${RESET}"
 
     if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
-        echo -e "\n${YELLOW}${BOLD}*** SYSTEM REBOOT REQUIRED ***${RESET}"
-        echo -e "${YELLOW}Core libraries (such as glibc), desktop environment, or kernel modules were updated.${RESET}\n"
-        read -r -p "Do you want to reboot the system now? [y/N] " REPLY || REPLY="N"
-        if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-            echo -e "\n${GREEN}Rebooting system in 5 seconds... (Press Ctrl+C to cancel)${RESET}"
+        echo -e "\n${YELLOW}${BOLD}$(_ REBOOT_REQUIRED_TITLE)${RESET}"
+        echo -e "${YELLOW}$(_ REBOOT_REQUIRED_REASON)${RESET}\n"
+        read -r -p "$(_ PROMPT_REBOOT_NOW)" REPLY || REPLY="N"
+        if [[ "$REPLY" =~ ^[YyJjSsOo]$ ]]; then
+            echo -e "\n${GREEN}$(_ REBOOTING_IN_5S)${RESET}"
             for i in {5..1}; do
                 echo -n "$i... "
                 sleep 1
