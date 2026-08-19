@@ -3,7 +3,7 @@
 
 export NEEDRESTART_MODE=a
 
-CURRENT_VERSION="0.11.1"
+CURRENT_VERSION="0.11.2"
 GITHUB_REPO="tux/debian-update"
 
 BOLD="\033[1m"

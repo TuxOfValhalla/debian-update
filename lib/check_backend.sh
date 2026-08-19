@@ -127,5 +127,5 @@ with open(tmp_file, "w") as f:
     json.dump(data, f, indent=2)
 
 os.replace(tmp_file, status_file)
-os.chmod(status_file, 0o644)
+os.chmod(status_file, 0o666)
 PYJSON

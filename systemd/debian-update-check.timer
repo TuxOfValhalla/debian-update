@@ -1,10 +1,9 @@
 [Unit]
-Description=Run debian-update periodic check at boot and hourly
+Description=Run debian-update check shortly after boot and hourly
 
 [Timer]
-OnActiveSec=15s
-OnCalendar=hourly
-Persistent=true
+OnBootSec=30s
+OnUnitActiveSec=1h
 
 [Install]
 WantedBy=timers.target

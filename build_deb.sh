@@ -4,7 +4,7 @@
 set -euo pipefail
 
 DEV_DIR="/home/tux/development/debian-update"
-VERSION="0.11.1-1"
+VERSION="0.11.2-1"
 PKG_NAME="debian-update_${VERSION}_all"
 BUILD_ROOT="/tmp/${PKG_NAME}"
 GENERIC_DEB="${DEV_DIR}/debian-update.deb"
@@ -58,7 +58,7 @@ set -e
 case "$1" in
     configure)
         mkdir -p /var/cache/debian-update
-        chmod 755 /var/cache/debian-update
+        chmod 1777 /var/cache/debian-update
 
         if command -v systemctl >/dev/null 2>&1; then
             systemctl daemon-reload || true

@@ -30,7 +30,7 @@
   "TOOLTIP_HELD": "Doalahuvvon: {count}",
   "TOOLTIP_REBOOT": "Ráva: Nuppástuhttit vuogádaga!",
   "TOOLTIP_WARNINGS": "Várrehusaid: {count}",
-  "PRESS_ENTER_EXIT": "Prena [ENTER] heaitit...",
+  "PRESS_ENTER_EXIT": "Deatta [ENTER] heaitit...",
   "CHECKING_GITHUB_UPDATES": "Iskkamin debian-update ođasmahttimiid GitHubas...",
   "GITHUB_UNREACHABLE": "Ieš-ođasmahttin ii leat vejolaš.",
   "NEW_APP_VERSION_AVAILABLE": "Ođđa veršuvdna gávdno: v{latest} (Asahuvvon: v{current})",
@@ -88,9 +88,9 @@
   "DEBGET_INVALID_OPTION": "Mekanihkalaš meagga.",
   "HELD_SKIPPED_RISK": "Meattáren doalahuvvon páhkaid (eastada vuogádaga krasjema)",
   "HELD_SAFE_OFFER": "Dát doalahuvvon páhkat leat sihkarat ođasmahttimii: {packages}",
-  "PROMPT_INSTALL_SAFE_HELD": "Hálidat go asahit dáid sihkaris páhkaid dál? [j/N] ",
+  "PROMPT_INSTALL_SAFE_HELD": "Hálidat go asahit dáid sihkaris páhkaid dál? [J/n] ",
   "NVIDIA_SYNC_START": "NVIDIA-vuoddiođasmahttin dárkkistuvvon. Ođasmahttimin Flatpak GL...",
   "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL lea lihkosmuvvan ođasmahttojuvvon.",
   "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL ođasmahttin feile. Dárkkis stivranbarffu.",
-  "PROMPT_UPGRADE_DEBGET": "Do you want to upgrade third-party .deb packages (deb-get)? [y/N] "
+  "PROMPT_UPGRADE_DEBGET": "Hálidat go ođasmahttit goalmmátbeali .deb-páhkaid (deb-get)? [j/N] "
 }

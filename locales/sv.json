@@ -86,11 +86,11 @@
   "DEBGET_UPDATING_INDEX": "Uppdaterar index...",
   "DEBGET_EXITING": "Avslutar.",
   "DEBGET_INVALID_OPTION": "Ogiltigt val.",
-  "HELD_SKIPPED_RISK": "Skipping held back packages (prevents system breakage)",
-  "HELD_SAFE_OFFER": "The following held back packages are safe to upgrade: {packages}",
-  "PROMPT_INSTALL_SAFE_HELD": "Do you want to install these safe packages now? [y/N] ",
-  "NVIDIA_SYNC_START": "NVIDIA driver update detected. Synchronizing Flatpak GL runtimes...",
-  "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL runtimes successfully synchronized.",
-  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL sync failed or offline. Action required in Tray.",
+  "HELD_SKIPPED_RISK": "Hoppar över kvarhållna paket (förhindrar systemfel)",
+  "HELD_SAFE_OFFER": "Följande kvarhållna paket kan tryggt uppgraderas: {packages}",
+  "PROMPT_INSTALL_SAFE_HELD": "Vill du installera dessa säkra paket nu? [J/n] ",
+  "NVIDIA_SYNC_START": "NVIDIA-drivrutinsuppdatering upptäckt. Synkroniserar Flatpak GL-körtider...",
+  "NVIDIA_SYNC_OK": "NVIDIA Flatpak GL-körtider synkroniserades framgångsrikt.",
+  "NVIDIA_SYNC_FAIL": "NVIDIA Flatpak GL-synkronisering misslyckades eller offline. Åtgärd krävs i meddelandefältet.",
   "PROMPT_UPGRADE_DEBGET": "Vill du uppgradera tredjeparts .deb-paket (deb-get)? [j/N] "
 }
